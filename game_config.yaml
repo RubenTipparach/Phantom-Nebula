@@ -1,0 +1,4 @@
+# PhantomSector Game Configuration
+# Available scenes: menu, physics
+
+StartupScene: menu

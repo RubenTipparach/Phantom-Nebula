@@ -1,0 +1,70 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Game (macOS/Linux)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "run-game.sh"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "runOptions": {
+                "runOn": "folderOpen": false
+            }
+        },
+        {
+            "label": "Run Editor (macOS/Linux)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "run-editor.sh"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Project",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "PhantomSector.sln"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Clean Project",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "clean",
+                "PhantomSector.sln"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
