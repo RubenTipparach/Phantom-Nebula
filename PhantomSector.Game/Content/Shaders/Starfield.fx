@@ -1,72 +1,128 @@
 // Voronoi Starfield Shader
-// Creates a static starfield using Voronoi/Worley noise mapped to a sphere
+// Creates a static starfield using proper 3D Voronoi
+// 3D Voronoi referenced from https://www.shadertoy.com/view/flSGDK
 
-float4x4 InverseViewProjection;
-float3 CameraPosition;
+//=============================================================================
+// TWEAKABLE PARAMETERS - Adjust these to change star appearance
+//=============================================================================
 
-// Hash function for pseudo-random numbers
-float2 hash22(float2 p)
+// Star Density (higher = more stars)
+static const float StarDensityLayer1 = 8.0;    // Base layer density
+static const float StarDensityLayer2 = 12.0;   // Medium layer density
+static const float StarDensityLayer3 = 16.0;   // Far layer density
+
+// Star Size (lower = smaller/sharper stars)
+static const float StarSharpness = 0.02;       // Distance threshold for star points
+static const float StarFalloff = 0.0;          // Smoothstep falloff (keep at 0 for sharp stars)
+
+// Star Brightness
+static const float StarBrightnessThreshold = 0.7;  // Only show stars brighter than this (0-1)
+static const float StarBrightnessMultiplier = 1.0; // Overall brightness multiplier
+
+// Layer Intensities (0-1)
+static const float Layer1Intensity = 1.0;      // Brightest/closest stars
+static const float Layer2Intensity = 0.8;      // Medium stars
+static const float Layer3Intensity = 0.6;      // Dimmest/farthest stars
+
+// Space Background Color (RGB, 0-1)
+static const float3 SpaceColor = float3(0.02, 0.01, 0.05);  // Dark blue/purple
+
+// Star Color (RGB, 0-1)
+static const float3 StarColor = float3(1.0, 0.98, 0.95);    // Warm white
+
+//=============================================================================
+
+float4x4 View;
+float4x4 Projection;
+
+// Hash functions
+float hash(float x)
 {
-    p = float2(dot(p, float2(127.1, 311.7)),
-               dot(p, float2(269.5, 183.3)));
-    return frac(sin(p) * 43758.5453);
+    return frac(x + 1.3215 * 1.8152);
 }
 
-// Voronoi/Worley noise function (now takes 2D UV on sphere)
-float voronoi(float2 uv)
+float hash3(float3 a)
 {
-    float2 i = floor(uv);
-    float2 f = frac(uv);
+    return frac((hash(a.z * 42.8883) + hash(a.y * 36.9125) + hash(a.x * 65.4321)) * 291.1257);
+}
 
-    float minDist = 1.0;
+float3 rehash3(float x)
+{
+    return float3(
+        hash(((x + 0.5283) * 59.3829) * 274.3487),
+        hash(((x + 0.8192) * 83.6621) * 345.3871),
+        hash(((x + 0.2157) * 36.6521) * 458.3971)
+    );
+}
 
-    // Check 3x3 grid of cells
-    for (int x = -1; x <= 1; x++)
+float sqr(float x)
+{
+    return x * x;
+}
+
+float fastdist(float3 a, float3 b)
+{
+    return sqr(b.x - a.x) + sqr(b.y - a.y) + sqr(b.z - a.z);
+}
+
+// Proper 3D Voronoi
+void voronoi3D_float(float3 pos, float density, out float Out, out float Cells)
+{
+    float4 p[27];
+    pos *= density;
+    float x = pos.x;
+    float y = pos.y;
+    float z = pos.z;
+
+    for (int _x = -1; _x < 2; _x++)
     {
-        for (int y = -1; y <= 1; y++)
+        for (int _y = -1; _y < 2; _y++)
         {
-            float2 neighbor = float2(float(x), float(y));
-            float2 cellPoint = hash22(i + neighbor);
-
-            // Static points - no animation
-            cellPoint = 0.5 + 0.5 * sin(6.2831 * cellPoint);
-
-            float2 diff = neighbor + cellPoint - f;
-            float dist = length(diff);
-
-            minDist = min(minDist, dist);
+            for(int _z = -1; _z < 2; _z++)
+            {
+                float3 _p = float3(floor(x), floor(y), floor(z)) + float3(_x, _y, _z);
+                float h = hash3(_p);
+                p[(_x + 1) + ((_y + 1) * 3) + ((_z + 1) * 3 * 3)] = float4((rehash3(h) + _p).xyz, h);
+            }
         }
     }
 
-    return minDist;
+    float m = 9999.9999;
+    float w = 0.0;
+
+    for (int i = 0; i < 27; i++)
+    {
+        float d = fastdist(float3(x, y, z), p[i].xyz);
+        if(d < m)
+        {
+            m = d;
+            w = p[i].w;
+        }
+    }
+
+    Out = m;
+    Cells = w;
 }
 
-// Convert 3D direction to spherical coordinates (for mapping to sphere)
-float2 directionToUV(float3 dir)
+// Generate stars using proper 3D Voronoi
+float starfield3D(float3 dir, float layer, float density)
 {
-    float phi = atan2(dir.z, dir.x);
-    float theta = acos(dir.y);
-    return float2(phi / 6.28318530718, theta / 3.14159265359);
-}
+    float voronoiDist, cellId;
 
-// Generate stars with multiple layers
-float starfield(float2 uv, float layer)
-{
-    // Scale and offset each layer
-    float2 offset = float2(layer * 123.45, layer * 678.90);
-    float2 scaledUV = uv * (10.0 + layer * 5.0) + offset;
-
-    // No scrolling - static stars
-    float voronoiValue = voronoi(scaledUV);
+    // Get voronoi value using proper 3D Voronoi
+    voronoi3D_float(dir, density, voronoiDist, cellId);
 
     // Create sharp star points
-    float star = smoothstep(0.1, 0.0, voronoiValue);
+    float star = smoothstep(StarSharpness, StarFalloff, voronoiDist);
 
-    // Add some variation in brightness
-    float2 cellId = floor(scaledUV);
-    float brightness = hash22(cellId).x;
+    // Use cell ID for brightness variation
+    float brightness = frac(cellId * 123.456);
 
-    return star * brightness;
+    // Filter out dimmer stars (only show brightest)
+    star *= step(StarBrightnessThreshold, brightness);
+
+    // Apply brightness multiplier
+    return star * brightness * StarBrightnessMultiplier;
 }
 
 struct VertexShaderInput
@@ -78,41 +134,38 @@ struct VertexShaderInput
 struct VertexShaderOutput
 {
     float4 Position : SV_POSITION;
-    float4 ScreenPosition : TEXCOORD0;
+    float3 ViewRay : TEXCOORD0;
 };
 
 VertexShaderOutput MainVS(VertexShaderInput input)
 {
     VertexShaderOutput output;
     output.Position = input.Position;
-    output.ScreenPosition = input.Position;
+
+    // Calculate view ray in view space
+    float4 farPoint = float4(input.Position.xy, 1.0, 1.0);
+    farPoint = mul(farPoint, Projection);
+    farPoint /= farPoint.w;
+
+    // Transform to world space direction
+    output.ViewRay = mul(farPoint.xyz, (float3x3)View);
+
     return output;
 }
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    // Reconstruct world-space view direction
-    float2 screenPos = input.ScreenPosition.xy / input.ScreenPosition.w;
-    float4 worldPos = mul(float4(screenPos, 1.0, 1.0), InverseViewProjection);
-    worldPos /= worldPos.w;
+    // Normalize the view direction
+    float3 viewDir = normalize(input.ViewRay);
 
-    // Direction from camera to point on far plane
-    float3 viewDir = normalize(worldPos.xyz - CameraPosition);
-
-    // Convert direction to spherical UV coordinates
-    float2 uv = directionToUV(viewDir);
-
-    // Create multiple layers of stars
+    // Create multiple layers of stars using 3D voronoi with configurable densities
     float stars = 0.0;
-    stars += starfield(uv, 1.0) * 1.0;  // Bright layer
-    stars += starfield(uv, 2.0) * 0.7;  // Medium layer
-    stars += starfield(uv, 3.0) * 0.5;  // Dim layer
+    stars += starfield3D(viewDir, 1.0, StarDensityLayer1) * Layer1Intensity;
+    stars += starfield3D(viewDir, 2.0, StarDensityLayer2) * Layer2Intensity;
+    stars += starfield3D(viewDir, 3.0, StarDensityLayer3) * Layer3Intensity;
 
-    // Add some blue/purple tint to space
-    float3 spaceColor = float3(0.02, 0.01, 0.05);
-    float3 starColor = float3(1.0, 0.95, 0.9);
-
-    float3 finalColor = spaceColor + stars * starColor;
+    // Use configurable colors
+    float3 finalColor = SpaceColor + stars * StarColor;
 
     return float4(finalColor, 1.0);
 }

@@ -198,15 +198,16 @@ public class SpaceshipScreen : GameScreen
         Game.GraphicsDevice.DepthStencilState = DepthStencilState.None;
         Game.GraphicsDevice.RasterizerState = RasterizerState.CullNone;
 
-        // Calculate inverse view-projection matrix for ray reconstruction
+        // Get camera matrices
         Matrix view = _camera.View;
         Matrix projection = _camera.Projection;
-        Matrix viewProjection = view * projection;
-        Matrix inverseViewProjection = Matrix.Invert(viewProjection);
 
-        // Set shader parameters
-        _starfieldEffect.Parameters["InverseViewProjection"]?.SetValue(inverseViewProjection);
-        _starfieldEffect.Parameters["CameraPosition"]?.SetValue(_camera.Position);
+        // Invert the view matrix to get the inverse rotation (transpose for rotation matrices)
+        Matrix inverseView = Matrix.Invert(view);
+
+        // Set shader parameters - pass inverse of view for ray direction calculation
+        _starfieldEffect.Parameters["View"]?.SetValue(inverseView);
+        _starfieldEffect.Parameters["Projection"]?.SetValue(Matrix.Invert(projection));
 
         // Draw full-screen quad
         foreach (var pass in _starfieldEffect.CurrentTechnique.Passes)
@@ -237,6 +238,15 @@ public class SpaceshipScreen : GameScreen
             _planetEffect.Parameters["Projection"]?.SetValue(projection);
             _planetEffect.Parameters["Time"]?.SetValue(_time);
             _planetEffect.Parameters["CameraPosition"]?.SetValue(_camera.Position);
+
+            // Set orbiting sun position
+            float angle = _time * 0.1f;
+            Vector3 sunPos = new Vector3(
+                (float)System.Math.Cos(angle) * 100f,
+                50f,
+                (float)System.Math.Sin(angle) * 100f
+            );
+            _planetEffect.Parameters["SunPosition"]?.SetValue(sunPos);
 
             foreach (var pass in _planetEffect.CurrentTechnique.Passes)
             {
