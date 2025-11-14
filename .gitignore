@@ -1,3 +1,7 @@
 .claude
 PhantomSector.Game/obj
 PhantomSector.Game/bin
+PhantomSector.Editor/bin/
+PhantomSector.Editor/obj/
+PhantomSector.Game/Content/obj/
+PhantomSector.Game/Content/bin/

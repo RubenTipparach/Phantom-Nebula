@@ -58,6 +58,11 @@ public class Game1 : Microsoft.Xna.Framework.Game
                 _screenManager.AddScreen(new MenuScreen());
                 break;
 
+            case "spaceship":
+            case "spaceshipscene":
+                _screenManager.AddScreen(new SpaceshipScreen());
+                break;
+
             case "physics":
             case "physicsdemo":
                 _screenManager.AddScreen(new PhysicsDemoScreen());

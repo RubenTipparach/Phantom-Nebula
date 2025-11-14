@@ -4,6 +4,12 @@ using System.Collections.Generic;
 
 namespace PhantomSector.Game.Core;
 
+public struct MeshData
+{
+    public VertexPositionNormalTexture[] Vertices;
+    public int[] Indices;
+}
+
 public static class GeometryGenerator
 {
     /// <summary>
@@ -117,6 +123,65 @@ public static class GeometryGenerator
 
         vertices = vertexList.ToArray();
         indices = indexList.ToArray();
+    }
+
+    /// <summary>
+    /// Generates sphere with texture coordinates - returns MeshData
+    /// </summary>
+    public static MeshData CreateSphere(float radius, int slices, int stacks)
+    {
+        var vertexList = new List<VertexPositionNormalTexture>();
+        var indexList = new List<int>();
+
+        // Generate vertices with normals and UVs
+        for (int stack = 0; stack <= stacks; stack++)
+        {
+            float phi = MathHelper.Pi * stack / stacks;
+            for (int slice = 0; slice <= slices; slice++)
+            {
+                float theta = MathHelper.TwoPi * slice / slices;
+
+                var pos = new Vector3(
+                    radius * (float)(System.Math.Sin(phi) * System.Math.Cos(theta)),
+                    radius * (float)System.Math.Cos(phi),
+                    radius * (float)(System.Math.Sin(phi) * System.Math.Sin(theta))
+                );
+
+                // Normal for a sphere is just the normalized position
+                var normal = Vector3.Normalize(pos);
+
+                // UV mapping
+                var uv = new Vector2((float)slice / slices, (float)stack / stacks);
+
+                vertexList.Add(new VertexPositionNormalTexture(pos, normal, uv));
+            }
+        }
+
+        // Generate indices (counter-clockwise winding when viewed from outside)
+        for (int stack = 0; stack < stacks; stack++)
+        {
+            for (int slice = 0; slice < slices; slice++)
+            {
+                int first = stack * (slices + 1) + slice;
+                int second = first + slices + 1;
+
+                // First triangle (counter-clockwise from outside)
+                indexList.Add(first);
+                indexList.Add(second);
+                indexList.Add(first + 1);
+
+                // Second triangle (counter-clockwise from outside)
+                indexList.Add(second);
+                indexList.Add(second + 1);
+                indexList.Add(first + 1);
+            }
+        }
+
+        return new MeshData
+        {
+            Vertices = vertexList.ToArray(),
+            Indices = indexList.ToArray()
+        };
     }
 
     /// <summary>

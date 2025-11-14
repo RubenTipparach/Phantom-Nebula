@@ -22,13 +22,22 @@ public class MenuScreen : GameScreen
         System.Console.WriteLine("[MenuScreen] Loading content");
 
         // Create buttons using global assets
+        var spaceshipButton = new Button("Spaceship Scene", ScreenManager.DefaultFont, ScreenManager.WhiteTexture);
+        spaceshipButton.OnClick += (sender, args) =>
+        {
+            System.Console.WriteLine("[Menu] Starting Spaceship Scene");
+            ScreenManager.AddScreen(new SpaceshipScreen());
+        };
+        spaceshipButton.SetPosition(new Vector2(100, 200));
+        _buttons.Add(spaceshipButton);
+
         var physicsButton = new Button("Physics Demo", ScreenManager.DefaultFont, ScreenManager.WhiteTexture);
         physicsButton.OnClick += (sender, args) =>
         {
             System.Console.WriteLine("[Menu] Starting Physics Demo");
             ScreenManager.AddScreen(new PhysicsDemoScreen());
         };
-        physicsButton.SetPosition(new Vector2(100, 200));
+        physicsButton.SetPosition(new Vector2(100, 260));
         _buttons.Add(physicsButton);
 
         var exitButton = new Button("Exit", ScreenManager.DefaultFont, ScreenManager.WhiteTexture);
@@ -37,7 +46,7 @@ public class MenuScreen : GameScreen
             System.Console.WriteLine("[Menu] Exiting game");
             Game.Exit();
         };
-        exitButton.SetPosition(new Vector2(100, 290));
+        exitButton.SetPosition(new Vector2(100, 320));
         _buttons.Add(exitButton);
 
         System.Console.WriteLine($"[MenuScreen] Created {_buttons.Count} buttons");
@@ -74,7 +83,7 @@ public class MenuScreen : GameScreen
 
     public override void Draw(GameTime gameTime, SpriteBatch spriteBatch)
     {
-        Game.GraphicsDevice.Clear(new Color(100, 149, 237)); // CornflowerBlue background
+        Game.GraphicsDevice.Clear(Color.Black); // Black background
 
         spriteBatch.Begin();
 

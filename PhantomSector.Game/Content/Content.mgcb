@@ -5,11 +5,25 @@
 /intermediateDir:obj/$(Platform)
 /platform:DesktopGL
 /config:
-/profile:Reach
+/profile:HiDef
 /compress:False
 
 #-------------------------------- References --------------------------------#
 
 
 #---------------------------------- Content ---------------------------------#
+
+#begin Shaders/Starfield.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/processorParam:Defines=OPENGL
+/build:Shaders/Starfield.fx
+
+#begin Shaders/PlanetNoise.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/processorParam:Defines=OPENGL
+/build:Shaders/PlanetNoise.fx
 

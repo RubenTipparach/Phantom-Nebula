@@ -1,45 +1,49 @@
+using Microsoft.Xna.Framework;
+using System;
 
-using UnityEngine;
+namespace PhantomSector.Game.Utils;
 
 public static class ArcTest
 {
-
-    public static bool TargetArcTest(Transform myship, Vector3 targetPosition, float startDegree, float stopDegree)
+    // Helper method to create rotation quaternion from euler angles (Unity compatibility)
+    private static Quaternion CreateFromYawPitchRoll(float yaw, float pitch, float roll)
     {
-        Vector3 leftArcNormalized = Quaternion.Euler(0, startDegree, 0) * myship.forward;
-        Vector3 RightArcNormalized = Quaternion.Euler(0, stopDegree, 0) * myship.forward;
-        Vector3 targetNormalized = (targetPosition - myship.position).normalized;
+        return Quaternion.CreateFromYawPitchRoll(
+            MathHelper.ToRadians(yaw),
+            MathHelper.ToRadians(pitch),
+            MathHelper.ToRadians(roll));
+    }
 
-        //Debug.DrawLine(myship.position, leftArcNormalized * 5 + myship.position, Color.yellow, 5);
-        //Debug.DrawLine(myship.position, RightArcNormalized * 5 + myship.position, Color.yellow, 5);
+    public static bool TargetArcTest(Vector3 shipPosition, Vector3 shipForward, Vector3 targetPosition, float startDegree, float stopDegree)
+    {
+        Vector3 leftArcNormalized = Vector3.Transform(shipForward, CreateFromYawPitchRoll(startDegree, 0, 0));
+        Vector3 RightArcNormalized = Vector3.Transform(shipForward, CreateFromYawPitchRoll(stopDegree, 0, 0));
+        Vector3 targetNormalized = Vector3.Normalize(targetPosition - shipPosition);
 
         var offset = (stopDegree - startDegree);
 
         if (offset == 360f) return true;
 
-        var testResult = TargetArcTest(leftArcNormalized, RightArcNormalized, targetNormalized, offset, Vector3.zero);
+        var testResult = TargetArcTest(leftArcNormalized, RightArcNormalized, targetNormalized, offset, Vector3.Zero);
 
         return testResult;
     }
 
-    public static bool TargetArcTest(Vector3 myPosition, Vector3 myForward, 
+    public static bool TargetArcTest(Vector3 myPosition, Vector3 myForward,
         Vector3 targetPosition, float startDegree, float stopDegree, bool debug = false)
     {
-        Vector3 leftArcNormalized = Quaternion.Euler(0, startDegree, 0) * myForward;
-        Vector3 RightArcNormalized = Quaternion.Euler(0, stopDegree, 0) * myForward;
-        Vector3 targetNormalized = (targetPosition - myPosition).normalized;
+        Vector3 leftArcNormalized = Vector3.Transform(myForward, CreateFromYawPitchRoll(startDegree, 0, 0));
+        Vector3 RightArcNormalized = Vector3.Transform(myForward, CreateFromYawPitchRoll(stopDegree, 0, 0));
+        Vector3 targetNormalized = Vector3.Normalize(targetPosition - myPosition);
 
-        if (debug)
-        {
-            Debug.DrawLine(myPosition, myPosition + leftArcNormalized * 5 + myForward, Color.yellow, 5);
-            Debug.DrawLine(myPosition, myPosition + RightArcNormalized * 5 + myForward, Color.yellow, 5);
-        }
+        // Debug drawing would need to be implemented with your game's rendering system
+        // if (debug) { /* Draw debug lines */ }
 
         var offset = (stopDegree - startDegree);
 
         if (offset == 360f) return true;
 
-        var testResult = TargetArcTest(leftArcNormalized, RightArcNormalized, targetNormalized, offset, Vector3.zero);
+        var testResult = TargetArcTest(leftArcNormalized, RightArcNormalized, targetNormalized, offset, Vector3.Zero);
 
         return testResult;
     }
@@ -49,14 +53,9 @@ public static class ArcTest
         float angle = actualAngle;
         float halfAngle = angle / 2f;
 
-        Vector3 midWayVector = Quaternion.Euler(0, -halfAngle, 0) * leftVector;
+        Vector3 midWayVector = Vector3.Transform(leftVector, CreateFromYawPitchRoll(-halfAngle, 0, 0));
         float minRangeUnit = Vector3.Dot(midWayVector, rightVector);
         float targetRangeUnit = Vector3.Dot(midWayVector, targetVector);
-
-        //Debug.DrawLine(offset, offset + leftVector, Color.yellow);
-        //Debug.DrawLine(offset, offset + midWayVector, Color.blue);
-        //Debug.DrawLine(offset, offset + rightVector, Color.yellow);
-        //Debug.DrawLine(offset, offset +targetVector, Color.red);
 
         return (targetRangeUnit >= minRangeUnit);
     }
@@ -67,49 +66,21 @@ public static class ArcTest
         float angle = actualAngle;
         float halfAngle = angle / 2f;
 
-        Vector3 midWayVector = Quaternion.Euler(halfAngle, 0, 0) * rightVector;
+        Vector3 midWayVector = Vector3.Transform(rightVector, CreateFromYawPitchRoll(0, halfAngle, 0));
         float minRangeUnit = Vector3.Dot(midWayVector, rightVector);
         float targetRangeUnit = Vector3.Dot(midWayVector, targetVector);
-
-        //Debug.DrawLine(offset, offset + leftVector, Color.yellow);
-        //Debug.DrawLine(offset, offset + midWayVector, Color.blue);
-        //Debug.DrawLine(offset, offset + rightVector, Color.yellow);
-        //Debug.DrawLine(offset, offset + targetVector, Color.red);
 
         return (targetRangeUnit >= minRangeUnit);
     }
 
-    public static bool TargetArcTest3D(Transform turret,
-    Vector3 targetPosition,
-    
-    float horizontalStartDegree,
-    float horizontalStopDegree,
-
-    float verticalStartDegree,
-    float verticalStopDegree,
-
-    bool debug = false)
-    {
-        return TargetArcTest3D(
-            turret.position,
-            turret.rotation,
-            targetPosition,
-
-            horizontalStartDegree,
-            horizontalStopDegree,
-
-            verticalStartDegree,
-            verticalStopDegree,
-
-            debug);
-    }
+    // Removed Transform-based overload - use the Vector3/Quaternion version directly
 
     // this is a pure utility function.
     public static bool TargetArcTest3D(
         Vector3 turretPosition,
         Quaternion turretRotation,
         Vector3 targetPosition,
-        
+
         float horizontalStartDegree,
         float horizontalStopDegree,
 
@@ -123,41 +94,37 @@ public static class ArcTest
 
         (var upVector, var rightVector) = orientation.GetUpAndRightVectors();
 
-        //horizotnal
-        Vector3 leftArcNormalized = Quaternion.Euler(0, horizontalStartDegree, 0)  * Vector3.forward;
-        Vector3 RightArcNormalized = Quaternion.Euler(0, horizontalStopDegree, 0) * Vector3.forward;
+        //horizontal
+        Vector3 leftArcNormalized = Vector3.Transform(Vector3.Forward, CreateFromYawPitchRoll(horizontalStartDegree, 0, 0));
+        Vector3 RightArcNormalized = Vector3.Transform(Vector3.Forward, CreateFromYawPitchRoll(horizontalStopDegree, 0, 0));
 
         // vertical
-        Vector3 bottomArcNormalized = Quaternion.Euler(verticalStartDegree, 0, 0) * Vector3.forward;
-        Vector3 topArcNormalized = Quaternion.Euler(verticalStopDegree, 0, 0) * Vector3.forward;
+        Vector3 bottomArcNormalized = Vector3.Transform(Vector3.Forward, CreateFromYawPitchRoll(0, verticalStartDegree, 0));
+        Vector3 topArcNormalized = Vector3.Transform(Vector3.Forward, CreateFromYawPitchRoll(0, verticalStopDegree, 0));
 
-        Vector3 targetNormalized = (targetPosition - myPosition).normalized;
+        Vector3 targetNormalized = Vector3.Normalize(targetPosition - myPosition);
 
-        Vector3 flattenedXZTarget = Quaternion.Inverse(orientation) * Vector3.ProjectOnPlane(targetNormalized, upVector).normalized; // horizontal
-        Vector3 flattenedYZTarget = Quaternion.Inverse(orientation) * Vector3.ProjectOnPlane(targetNormalized, rightVector).normalized; // vertical
+        Vector3 flattenedXZTarget = Vector3.Normalize(Vector3.Transform(ProjectOnPlane(targetNormalized, upVector), Quaternion.Inverse(orientation))); // horizontal
+        Vector3 flattenedYZTarget = Vector3.Normalize(Vector3.Transform(ProjectOnPlane(targetNormalized, rightVector), Quaternion.Inverse(orientation))); // vertical
 
         var hOffset = (horizontalStartDegree - horizontalStopDegree);
         var yOffset = (verticalStartDegree - verticalStopDegree);
 
-        bool testResultXZ = hOffset >= 360f || TargetArcTest(leftArcNormalized, RightArcNormalized, flattenedXZTarget, hOffset, Vector3.zero); // horizontal
-        bool testResultYZ = yOffset >= 360f || TargetArcTestVertical(bottomArcNormalized, topArcNormalized, flattenedYZTarget, yOffset, Vector3.left * 4);// vertical
+        bool testResultXZ = hOffset >= 360f || TargetArcTest(leftArcNormalized, RightArcNormalized, flattenedXZTarget, hOffset, Vector3.Zero); // horizontal
+        bool testResultYZ = yOffset >= 360f || TargetArcTestVertical(bottomArcNormalized, topArcNormalized, flattenedYZTarget, yOffset, Vector3.Left * 4);// vertical
 
-        if (debug)
-        {
-            Debug.DrawLine(myPosition, myPosition + orientation * leftArcNormalized * 2f, Color.yellow, 1);
-            Debug.DrawLine(myPosition, myPosition + orientation * RightArcNormalized * 2f, Color.yellow, 1);
+        // Debug drawing would need to be implemented with your game's rendering system
+        // if (debug) { /* Draw debug lines */ }
 
-            Debug.DrawLine(myPosition, myPosition + orientation * bottomArcNormalized * 2f, Color.cyan, 1);
-            Debug.DrawLine(myPosition, myPosition + orientation * topArcNormalized * 2f, Color.cyan, 1);
-
-            if (testResultXZ) Debug.DrawLine(myPosition, myPosition + orientation * flattenedXZTarget * 2f, Color.red, 1);
-            if (testResultXZ) Debug.DrawLine(myPosition, myPosition + orientation * flattenedYZTarget * 2f, Color.green, 1);
-
-        }
         return testResultXZ && testResultYZ;
-        //return testResultYZ;
     }
 
+    // Helper method to project a vector onto a plane (Unity compatibility)
+    private static Vector3 ProjectOnPlane(Vector3 vector, Vector3 planeNormal)
+    {
+        float distance = Vector3.Dot(vector, planeNormal);
+        return vector - planeNormal * distance;
+    }
 }
 
 
@@ -166,8 +133,8 @@ public static class QuaternionExtensions
     // Extension method for Quaternion
     public static (Vector3 up, Vector3 right) GetUpAndRightVectors(this Quaternion quaternion)
     {
-        Vector3 upVector = quaternion * Vector3.up;    // Up vector
-        Vector3 rightVector = quaternion * Vector3.right; // Right vector
+        Vector3 upVector = Vector3.Transform(Vector3.Up, quaternion);
+        Vector3 rightVector = Vector3.Transform(Vector3.Right, quaternion);
 
         return (upVector, rightVector);
     }
