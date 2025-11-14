@@ -79,7 +79,7 @@ public class MenuScreen : GameScreen
         spriteBatch.Begin();
 
         // Draw title
-        var titleText = "FALLEN TRIBES - MAIN MENU";
+        var titleText = "PHANTOM SECTOR - MAIN MENU";
         var titleSize = ScreenManager.DefaultFont.MeasureString(titleText);
         var titlePos = new Vector2(
             (Game.GraphicsDevice.Viewport.Width - titleSize.X) / 2,

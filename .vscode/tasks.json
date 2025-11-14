@@ -16,10 +16,7 @@
                 "reveal": "always",
                 "panel": "new"
             },
-            "problemMatcher": [],
-            "runOptions": {
-                "runOn": "folderOpen": false
-            }
+            "problemMatcher": []
         },
         {
             "label": "Run Editor (macOS/Linux)",

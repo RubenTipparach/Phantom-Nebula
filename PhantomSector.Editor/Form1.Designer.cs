@@ -157,7 +157,7 @@ partial class Form1
         this.Controls.Add(this.panelControls);
         this.Controls.Add(this.gameViewControl);
         this.Name = "Form1";
-        this.Text = "Fallen Tribes Editor - 3D Viewport";
+        this.Text = "PhantomSector Editor - 3D Viewport";
         this.panelControls.ResumeLayout(false);
         this.panelControls.PerformLayout();
         this.ResumeLayout(false);
