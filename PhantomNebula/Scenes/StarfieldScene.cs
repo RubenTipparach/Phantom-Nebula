@@ -12,10 +12,12 @@ namespace PhantomNebula.Scenes;
 public class StarfieldScene
 {
     private BackgroundRenderer background;
+    private TestMesh testMesh;
     private Entity planet;
     private PlanetRenderer planetRenderer;
     private Ship ship;
     private CameraController cameraController;
+    private GifRecorder gifRecorder;
 
     // Input state
     private float shipTargetSpeed = 0f;
@@ -24,8 +26,11 @@ public class StarfieldScene
 
     public StarfieldScene()
     {
-        // Initialize background renderer
+        // Initialize background renderer with starfield shader
         background = new BackgroundRenderer();
+
+        // Initialize test mesh (red cube)
+        testMesh = new TestMesh();
 
         // Create planet entity with transform - DOUBLED SIZE
         planet = new Entity(new Vector3(0, 0, 0), new Vector3(4.0f, 4.0f, 4.0f), "Planet");
@@ -36,6 +41,9 @@ public class StarfieldScene
 
         // Create camera controller orbiting the planet
         cameraController = new CameraController(planet.Transform);
+
+        // Initialize GIF recorder
+        gifRecorder = new GifRecorder();
 
         Console.WriteLine("[StarfieldScene] Initialized with Voronoi starfield shader, 1 planet, 1 ship");
     }
@@ -111,6 +119,18 @@ public class StarfieldScene
             cameraController.Reset();
             Console.WriteLine("[Camera] Reset to default position");
         }
+
+        // Ctrl+8 to start GIF recording
+        if (Raylib.IsKeyPressed(KeyboardKey.Eight) && Raylib.IsKeyDown(KeyboardKey.LeftControl))
+        {
+            gifRecorder.StartRecording();
+        }
+
+        // Ctrl+9 to stop GIF recording
+        if (Raylib.IsKeyPressed(KeyboardKey.Nine) && Raylib.IsKeyDown(KeyboardKey.LeftControl))
+        {
+            gifRecorder.StopRecording();
+        }
     }
 
     public void Draw()
@@ -124,22 +144,28 @@ public class StarfieldScene
         // 3D mode with camera controller
         Raylib.BeginMode3D(camera);
 
-        // Draw background
+        // Draw background starfield
         background.Draw(camera);
 
-        // Draw planet with lighting
+        // Draw planet with procedural shader
         planetRenderer.Draw(camera);
+
+        // Draw test mesh (red cube) - offset from planet
+        testMesh.Draw(new Vector3(3.0f, 0, 0));
 
         // Draw ship as a simple cube
         DrawShip();
-
-        // Draw grid
-        Raylib.DrawGrid(20, 1.0f);
 
         Raylib.EndMode3D();
 
         // Draw UI
         DrawUI();
+
+        // Capture frame for GIF recording after all drawing is done
+        if (gifRecorder.IsRecording)
+        {
+            gifRecorder.CaptureFrame(Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
+        }
     }
 
     private void DrawShip()
@@ -173,17 +199,30 @@ public class StarfieldScene
         Raylib.DrawText($"Camera Target: {targetName}", 10, 140, 12, Color.Yellow);
         Raylib.DrawText($"Orbit Distance: {cameraController.OrbitDistance:F2}", 10, 160, 12, Color.Yellow);
 
+        // GIF Recording/Saving status
+        if (gifRecorder.IsRecording)
+        {
+            Raylib.DrawText($"REC - {gifRecorder.FrameCount} frames", screenWidth - 200, 10, 14, Color.Red);
+        }
+        else if (gifRecorder.IsSaving)
+        {
+            Raylib.DrawText("SAVING...", screenWidth - 200, 10, 14, Color.Orange);
+        }
+
         // Controls
-        Raylib.DrawText("Controls:", 10, screenHeight - 120, 12, Color.Gray);
-        Raylib.DrawText("WASD - Move/Turn Ship | Left Click+Drag - Orbit Camera | Scroll - Zoom", 10, screenHeight - 100, 12, Color.Gray);
-        Raylib.DrawText("T - Toggle Camera Target | R - Reset Camera | ESC - Exit", 10, screenHeight - 80, 12, Color.Gray);
+        Raylib.DrawText("Controls:", 10, screenHeight - 140, 12, Color.Gray);
+        Raylib.DrawText("WASD - Move/Turn Ship | Left Click+Drag - Orbit Camera | Scroll - Zoom", 10, screenHeight - 120, 12, Color.Gray);
+        Raylib.DrawText("T - Toggle Camera Target | R - Reset Camera | Ctrl+8 - Record | Ctrl+9 - Stop", 10, screenHeight - 100, 12, Color.Gray);
+        Raylib.DrawText("ESC - Exit", 10, screenHeight - 80, 12, Color.Gray);
     }
 
     public void Dispose()
     {
         background.Dispose();
+        testMesh.Dispose();
         planetRenderer.Dispose();
         planet.Dispose();
         ship.Dispose();
+        gifRecorder.Dispose();
     }
 }

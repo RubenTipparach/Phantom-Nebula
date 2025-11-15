@@ -129,8 +129,8 @@ float starfield3D(vec3 dir, float layer, float density)
 
 void main()
 {
-    // Use normalized fragment position as direction vector
-    vec3 dir = normalize(fragPosition);
+    // Use fragment position as direction vector (already normalized from vertex shader)
+    vec3 dir = fragPosition;
 
     // Generate starfield with three density layers
     float stars = 0.0;
