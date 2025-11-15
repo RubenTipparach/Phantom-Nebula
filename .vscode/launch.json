@@ -1,0 +1,79 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch PhantomNebula (Debug)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build PhantomNebula",
+            "program": "${workspaceFolder}/PhantomNebula/bin/Debug/net8.0/PhantomNebula.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/PhantomNebula",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Launch PhantomNebula (Release)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build Project",
+            "program": "${workspaceFolder}/PhantomNebula/bin/Release/net8.0/PhantomNebula.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/PhantomNebula",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "internalConsoleOptions": "openOnSessionStart",
+            "justMyCode": true
+        },
+        {
+            "name": "Launch Game (Debug)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build Project",
+            "program": "${workspaceFolder}/PhantomSector.Game/bin/Debug/net8.0/PhantomSector.Game.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "internalConsoleOptions": "openOnSessionStart",
+            "justMyCode": true
+        },
+        {
+            "name": "Launch Game (Release)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build Project",
+            "program": "${workspaceFolder}/PhantomSector.Game/bin/Release/net8.0/PhantomSector.Game.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "internalConsoleOptions": "openOnSessionStart",
+            "justMyCode": true
+        },
+        {
+            "name": "Launch Editor (Windows Only)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build Project",
+            "program": "${workspaceFolder}/PhantomSector.Editor/bin/Debug/net9.0-windows/PhantomSector.Editor.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "internalConsoleOptions": "openOnSessionStart",
+            "justMyCode": true
+        },
+        {
+            "name": "Attach to Game Process",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickProcess}",
+            "justMyCode": true
+        }
+    ]
+}

@@ -9,3 +9,6 @@ PhantomSector.Game/Content/bin/
 .vs/
 PhantomSector.Game/Content/nul
 nul
+RaylibEngine/
+PhantomNebula/bin/
+PhantomNebula/obj/

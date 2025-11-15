@@ -1,0 +1,77 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "Phantom-Sector (Root)"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "**/.git": true,
+      "**/*.dll": false,
+      "**/*.so": false
+    },
+    "search.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "**/node_modules": true
+    },
+    "dotnet.defaultSolutionOrFolder": ".",
+    "omnisharp.enableEditorConfigSupport": true,
+    "omnisharp.enableRoslynAnalyzers": true,
+    "csharp.semanticHighlighting.enabled": true,
+    "[csharp]": {
+      "editor.defaultFormatter": "ms-dotnettools.csharp",
+      "editor.formatOnSave": true,
+      "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+      }
+    },
+    "[glsl]": {
+      "editor.defaultFormatter": "raczzalan.webgl-glsl-editor",
+      "editor.formatOnSave": false
+    },
+    "[shellscript]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format",
+      "editor.formatOnSave": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-dotnettools.csharp",
+      "ms-dotnettools.vscode-dotnet-runtime",
+      "raczzalan.webgl-glsl-editor",
+      "foxundermoon.shell-format",
+      "GitHub.copilot"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "PhantomNebula",
+        "type": "coreclr",
+        "request": "launch",
+        "program": "${workspaceFolder:PhantomNebula}/bin/Debug/net8.0/PhantomNebula.dll",
+        "args": [],
+        "cwd": "${workspaceFolder:PhantomNebula}",
+        "stopAtEntry": false,
+        "console": "integratedTerminal",
+        "internalConsoleOptions": "neverOpen"
+      },
+      {
+        "name": "raylib-cs Examples",
+        "type": "coreclr",
+        "request": "launch",
+        "program": "${workspaceFolder:raylib-cs Examples}/bin/Debug/net8.0/Examples.dll",
+        "args": [],
+        "cwd": "${workspaceFolder:raylib-cs Examples}",
+        "stopAtEntry": false,
+        "console": "integratedTerminal",
+        "internalConsoleOptions": "neverOpen"
+      }
+    ]
+  }
+}

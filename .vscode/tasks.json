@@ -32,6 +32,24 @@
             "problemMatcher": []
         },
         {
+            "label": "Build PhantomNebula",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "PhantomNebula/PhantomNebula.csproj"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "Build Project",
             "type": "shell",
             "command": "dotnet",

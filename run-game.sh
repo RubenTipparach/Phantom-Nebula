@@ -1,15 +1,16 @@
 #!/bin/bash
 
-# Build and run the PhantomSector game
+# Build and run the PhantomNebula game (Raylib-based)
 
 cd "$(dirname "$0")"
 
-echo "Building PhantomSector Game..."
-dotnet build PhantomSector.Game/PhantomSector.Game.csproj
+echo "Building PhantomNebula Game..."
+dotnet build PhantomNebula/PhantomNebula.csproj
 
 if [ $? -eq 0 ]; then
     echo "Build successful! Starting game..."
-    dotnet run --project PhantomSector.Game/PhantomSector.Game.csproj
+    cd PhantomNebula
+    dotnet run
 else
     echo "Build failed!"
     exit 1
