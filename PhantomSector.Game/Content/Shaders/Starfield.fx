@@ -7,9 +7,9 @@
 //=============================================================================
 
 // Star Density (higher = more stars)
-static const float StarDensityLayer1 = 8.0;    // Base layer density
-static const float StarDensityLayer2 = 12.0;   // Medium layer density
-static const float StarDensityLayer3 = 16.0;   // Far layer density
+static const float StarDensityLayer1 = 100.0;    // Base layer density
+static const float StarDensityLayer2 = 200.0;   // Medium layer density
+static const float StarDensityLayer3 = 300.0;   // Far layer density
 
 // Star Size (lower = smaller/sharper stars)
 static const float StarSharpness = 0.02;       // Distance threshold for star points
@@ -25,7 +25,7 @@ static const float Layer2Intensity = 0.8;      // Medium stars
 static const float Layer3Intensity = 0.6;      // Dimmest/farthest stars
 
 // Space Background Color (RGB, 0-1)
-static const float3 SpaceColor = float3(0.02, 0.01, 0.05);  // Dark blue/purple
+static const float3 SpaceColor = float3(0.0 , 0.0 , 0.0 );  // Dark blue/purple
 
 // Star Color (RGB, 0-1)
 static const float3 StarColor = float3(1.0, 0.98, 0.95);    // Warm white

@@ -35,7 +35,9 @@ static const float3 CONTINENT_OFFSET = float3(0.5, 0.2, 0.8); // Seed for contin
 
 // Ice cap settings
 static const float ICE_START = 0.83;              // Latitude where ice begins (0-1)
-static const float ICE_END = 0.85;               // Latitude where ice is full (0-1)
+static const float ICE_END = 0.85;                // Latitude where ice is full (0-1)
+static const float ICE_NOISE_SCALE = 32.0;        // Scale of noise for ice cap edges (higher = more detail)
+static const float ICE_NOISE_STRENGTH = 0.3;     // How much noise affects ice cap boundary
 
 // Cloud settings
 static const float CLOUD_SCALE = 8.0;            // Cloud pattern scale
@@ -244,9 +246,14 @@ float3 GetPlanetColor(float3 normal, float3 worldPos, out float height, out floa
     // Mix land and ocean with smooth coastline
     float3 surfaceColor = lerp(oceanColor, landColor, landMask);
 
-    // Ice caps at poles (using tweakable parameters)
+    // Ice caps at poles with noise for irregular edges
     float poleAmount = abs(normal.y);
-    float iceMask = smoothstep(ICE_START, ICE_END, poleAmount);
+
+    // Add noise to ice cap boundary for natural, irregular shape
+    float iceNoise = fbm(normal * ICE_NOISE_SCALE);
+    float noisyPoleAmount = poleAmount + (iceNoise - 0.5) * ICE_NOISE_STRENGTH;
+
+    float iceMask = smoothstep(ICE_START, ICE_END, noisyPoleAmount);
     surfaceColor = lerp(surfaceColor, ICE_COLOR, iceMask);
 
     return surfaceColor;
@@ -301,10 +308,13 @@ float3 GetAtmosphere(float3 rayDir, float3 normal, float3 lightDir)
     float rim = 1.0 - max(0.0, dot(rayDir, normal));
     rim = pow(rim, ATMOSPHERE_RIM_POWER);
 
-    // Atmospheric scattering (brighter on sunlit side)
+    // Atmospheric scattering (brighter on sunlit side, zero on dark side)
     float scatter = max(0.0, dot(normal, lightDir));
 
-    return ATMOSPHERE_COLOR * rim * (ATMOSPHERE_SCATTER_MIN + ATMOSPHERE_SCATTER_MAX * scatter);
+    // Only show atmosphere on sunlit side and terminator
+    float atmosphereVisibility = smoothstep(-0.2, 0.2, dot(normal, lightDir));
+
+    return ATMOSPHERE_COLOR * rim * (ATMOSPHERE_SCATTER_MIN + ATMOSPHERE_SCATTER_MAX * scatter) * atmosphereVisibility;
 }
 
 //=============================================================================
@@ -316,7 +326,7 @@ float3 CalculateLighting(float3 worldPos, float3 normal, float3 surfaceColor, fl
     // Diffuse lighting
     float ndotl = max(0.0, dot(normal, lightDir));
 
-    // Cloud shadows - use offset cloud density for shadow casting
+    // Cloud shadows - use offset cloud density for shadow casting on ground
     float cloudShadow = 1.0 - (shadowCloudDensity * CLOUD_SHADOW_STRENGTH);
     float3 diffuse = surfaceColor * ndotl * cloudShadow;
 
@@ -392,17 +402,21 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     float landMask;
     float3 surfaceColor = GetPlanetColor(normal, input.WorldPos, height, landMask);
 
+    // Get cloud density (no offset for visible clouds)
+    float cloudDensity = GetCloudDensity(normal, Time, float3(0.0, 0.0, 0.0));
+
     // Calculate terrain normal from heightmap for better lighting detail (only on land)
     float3 terrainNormal = CalculateTerrainNormal(normal, landMask);
 
-    // Get cloud density (no offset for visible clouds)
-    float cloudDensity = GetCloudDensity(normal, Time, float3(0.0, 0.0, 0.0));
+    // Blend between smooth sphere normal and terrain normal based on cloud coverage
+    // Where clouds are dense, use smooth normal so clouds don't show terrain bumps
+    float3 finalNormal = lerp(terrainNormal, normal, cloudDensity);
 
     // Get offset cloud density for shadows (simulates clouds casting shadows on ground)
     float shadowCloudDensity = GetCloudDensity(normal, Time, CLOUD_SHADOW_OFFSET);
 
-    // Calculate lighting using terrain normal for better detail
-    float3 litColor = CalculateLighting(input.WorldPos, terrainNormal, surfaceColor, lightDir, viewDir, cloudDensity, shadowCloudDensity);
+    // Calculate lighting using the masked normal (smooth under clouds, detailed on clear terrain)
+    float3 litColor = CalculateLighting(input.WorldPos, finalNormal, surfaceColor, lightDir, viewDir, cloudDensity, shadowCloudDensity);
 
     // Add atmosphere glow
     float3 atmosphere = GetAtmosphere(viewDir, normal, lightDir);

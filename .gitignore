@@ -6,3 +6,6 @@ PhantomSector.Editor/obj/
 PhantomSector.Game/Content/obj/
 PhantomSector.Game/Content/bin/
 .history/
+.vs/
+PhantomSector.Game/Content/nul
+nul

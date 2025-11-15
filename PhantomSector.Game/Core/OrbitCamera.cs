@@ -23,6 +23,11 @@ public class OrbitCamera : Camera
         Target = Vector3.Zero;
     }
 
+    public void SetTarget(Vector3 target)
+    {
+        Target = target;
+    }
+
     public override void Update(GameTime gameTime)
     {
         // Calculate position based on distance and angles

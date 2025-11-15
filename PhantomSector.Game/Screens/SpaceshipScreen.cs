@@ -11,9 +11,13 @@ public class SpaceshipScreen : GameScreen
     private OrbitCamera _camera;
     private BasicEffect _basicEffect;
 
-    // Spaceship (cube)
-    private VertexPositionColor[] _cubeVertices;
-    private short[] _cubeIndices;
+    // Spaceship entity
+    private Entity _shipEntity;
+
+    // Wireframe cube (double size)
+    private VertexPositionColor[] _wireframeCubeVertices;
+    private short[] _wireframeCubeIndices;
+    private BasicEffect _wireframeEffect;
 
     // Planet (sphere)
     private VertexPositionNormalTexture[] _sphereVertices;
@@ -22,11 +26,14 @@ public class SpaceshipScreen : GameScreen
     // Shaders
     private Effect _starfieldEffect;
     private Effect _planetEffect;
+    private Effect _shipEffect;
+    private Texture2D _shipEmissiveTexture;
 
     // Full-screen quad for starfield
     private VertexPositionTexture[] _fullScreenQuad;
 
     private float _time;
+    private Vector3 _spaceshipPosition = new Vector3(10, 0, 0);
 
     public SpaceshipScreen() : base("Spaceship Scene")
     {
@@ -38,21 +45,29 @@ public class SpaceshipScreen : GameScreen
 
         Console.WriteLine("[SpaceshipScreen] Loading content");
 
-        // Initialize camera
+        // Initialize camera to orbit around the spaceship
         _camera = new OrbitCamera(Game.GraphicsDevice);
-        _camera.Distance = 20f;
-        // Target is set internally by OrbitCamera
+        _camera.Distance = 5f;
+        _camera.SetTarget(_spaceshipPosition);
 
         // Initialize basic effect for spaceship
         _basicEffect = new BasicEffect(Game.GraphicsDevice);
         _basicEffect.VertexColorEnabled = true;
         _basicEffect.LightingEnabled = false;
 
+        // Initialize wireframe effect
+        _wireframeEffect = new BasicEffect(Game.GraphicsDevice);
+        _wireframeEffect.VertexColorEnabled = true;
+        _wireframeEffect.LightingEnabled = false;
+
         // Load shaders
         LoadShaders();
 
+        // Load ship model
+        LoadShipModel();
+
         // Create geometry
-        CreateSpaceship();
+        CreateWireframeCube();
         CreatePlanet();
         CreateFullScreenQuad();
 
@@ -80,39 +95,82 @@ public class SpaceshipScreen : GameScreen
         {
             Console.WriteLine($"[SpaceshipScreen] Failed to load PlanetNoise shader: {e.Message}");
         }
+
+        try
+        {
+            _shipEffect = Game.Content.Load<Effect>("Shaders/ShipShader");
+            Console.WriteLine("[SpaceshipScreen] Loaded ShipShader");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[SpaceshipScreen] Failed to load ShipShader: {e.Message}");
+        }
+
+        try
+        {
+            _shipEmissiveTexture = Game.Content.Load<Texture2D>("Textures/shippy_em");
+            Console.WriteLine("[SpaceshipScreen] Loaded ship emissive texture");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[SpaceshipScreen] Failed to load ship emissive texture: {e.Message}");
+        }
     }
 
-    private void CreateSpaceship()
+    private void LoadShipModel()
     {
-        // Create a simple cube for the spaceship
-        _cubeVertices = new VertexPositionColor[8];
-        float size = 1f;
-
-        // Define cube vertices with colors
-        _cubeVertices[0] = new VertexPositionColor(new Vector3(-size, -size, -size), Color.Red);
-        _cubeVertices[1] = new VertexPositionColor(new Vector3(size, -size, -size), Color.Green);
-        _cubeVertices[2] = new VertexPositionColor(new Vector3(size, size, -size), Color.Blue);
-        _cubeVertices[3] = new VertexPositionColor(new Vector3(-size, size, -size), Color.Yellow);
-        _cubeVertices[4] = new VertexPositionColor(new Vector3(-size, -size, size), Color.Cyan);
-        _cubeVertices[5] = new VertexPositionColor(new Vector3(size, -size, size), Color.Magenta);
-        _cubeVertices[6] = new VertexPositionColor(new Vector3(size, size, size), Color.White);
-        _cubeVertices[7] = new VertexPositionColor(new Vector3(-size, size, size), Color.Orange);
-
-        // Define cube indices (36 indices for 12 triangles, 6 faces)
-        _cubeIndices = new short[]
+        try
         {
-            // Front face
-            0, 1, 2, 0, 2, 3,
-            // Back face
-            4, 6, 5, 4, 7, 6,
-            // Left face
-            0, 3, 7, 0, 7, 4,
-            // Right face
-            1, 5, 6, 1, 6, 2,
-            // Top face
-            3, 2, 6, 3, 6, 7,
-            // Bottom face
-            0, 4, 5, 0, 5, 1
+            _shipEntity = new Entity(Game.Content, "Models/shippy1");
+            _shipEntity.Position = _spaceshipPosition;
+            _shipEntity.Scale = 0.1f;
+
+            // Set custom shader and emissive texture
+            if (_shipEffect != null)
+            {
+                _shipEntity.SetCustomEffect(_shipEffect);
+            }
+            if (_shipEmissiveTexture != null)
+            {
+                _shipEntity.SetEmissiveTexture(_shipEmissiveTexture);
+            }
+
+            Console.WriteLine("[SpaceshipScreen] Loaded ship entity with custom shader");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[SpaceshipScreen] Failed to load ship model: {e.Message}");
+        }
+    }
+
+
+    private void CreateWireframeCube()
+    {
+        // Create a wireframe cube that is double the size (2f instead of 1f)
+        float size = 2f;
+
+        // Define cube vertices
+        _wireframeCubeVertices = new VertexPositionColor[8];
+        Color wireColor = Color.Cyan;
+
+        _wireframeCubeVertices[0] = new VertexPositionColor(new Vector3(-size, -size, -size), wireColor);
+        _wireframeCubeVertices[1] = new VertexPositionColor(new Vector3(size, -size, -size), wireColor);
+        _wireframeCubeVertices[2] = new VertexPositionColor(new Vector3(size, size, -size), wireColor);
+        _wireframeCubeVertices[3] = new VertexPositionColor(new Vector3(-size, size, -size), wireColor);
+        _wireframeCubeVertices[4] = new VertexPositionColor(new Vector3(-size, -size, size), wireColor);
+        _wireframeCubeVertices[5] = new VertexPositionColor(new Vector3(size, -size, size), wireColor);
+        _wireframeCubeVertices[6] = new VertexPositionColor(new Vector3(size, size, size), wireColor);
+        _wireframeCubeVertices[7] = new VertexPositionColor(new Vector3(-size, size, size), wireColor);
+
+        // Define wireframe indices (lines, not triangles - 24 indices for 12 edges)
+        _wireframeCubeIndices = new short[]
+        {
+            // Bottom face edges
+            0, 1,  1, 2,  2, 3,  3, 0,
+            // Top face edges
+            4, 5,  5, 6,  6, 7,  7, 4,
+            // Vertical edges
+            0, 4,  1, 5,  2, 6,  3, 7
         };
     }
 
@@ -175,6 +233,9 @@ public class SpaceshipScreen : GameScreen
 
         // Draw spaceship
         DrawSpaceship();
+
+        // Draw wireframe cube
+        DrawWireframeCube();
 
         // Draw UI
         spriteBatch.Begin();
@@ -290,28 +351,33 @@ public class SpaceshipScreen : GameScreen
 
     private void DrawSpaceship()
     {
-        if (_cubeVertices == null || _cubeIndices == null) return;
+        _shipEntity?.Draw(_camera);
+    }
 
-        // Position spaceship offset from planet
-        Matrix world = Matrix.CreateTranslation(10, 0, 0);
+    private void DrawWireframeCube()
+    {
+        if (_wireframeCubeVertices == null || _wireframeCubeIndices == null) return;
+
+        // Position wireframe cube at the same location as spaceship
+        Matrix world = Matrix.CreateTranslation(_spaceshipPosition);
         Matrix view = _camera.View;
         Matrix projection = _camera.Projection;
 
-        _basicEffect.World = world;
-        _basicEffect.View = view;
-        _basicEffect.Projection = projection;
+        _wireframeEffect.World = world;
+        _wireframeEffect.View = view;
+        _wireframeEffect.Projection = projection;
 
-        foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+        foreach (var pass in _wireframeEffect.CurrentTechnique.Passes)
         {
             pass.Apply();
             Game.GraphicsDevice.DrawUserIndexedPrimitives(
-                PrimitiveType.TriangleList,
-                _cubeVertices,
+                PrimitiveType.LineList,
+                _wireframeCubeVertices,
                 0,
-                _cubeVertices.Length,
-                _cubeIndices,
+                _wireframeCubeVertices.Length,
+                _wireframeCubeIndices,
                 0,
-                _cubeIndices.Length / 3
+                _wireframeCubeIndices.Length / 2
             );
         }
     }
@@ -319,6 +385,7 @@ public class SpaceshipScreen : GameScreen
     public override void UnloadContent()
     {
         _basicEffect?.Dispose();
+        _wireframeEffect?.Dispose();
         _starfieldEffect?.Dispose();
         _planetEffect?.Dispose();
 
