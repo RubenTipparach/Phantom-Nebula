@@ -17,16 +17,20 @@ public class StarfieldScene
     private Entity planet;
     private PlanetRenderer planetRenderer;
     private Ship ship;
-    private ShipRenderer shipRenderer;
     private CameraController cameraController;
     private GifRecorder gifRecorder;
     private RenderTexture2D sceneTexture;
-    private Vector3 lightPosition = new Vector3(100.0f, 50.0f, 0.0f);
+
+    // Directional light - sun position: Y positive (up), X negative (left), Z positive (forward)
+    private Vector3 lightDirection = Vector3.Normalize(new Vector3(0.0f, 1.0f, 1.0f));
 
     // Input state
     private float shipTargetSpeed = 0f;
     private Vector2 shipTargetHeading = Vector2.UnitY;
     private int cameraTarget = 0; // 0 = planet, 1 = ship
+
+    // Mouse raycast
+    private Vector3? mouseWorldPosition = null;
 
     public StarfieldScene()
     {
@@ -37,14 +41,11 @@ public class StarfieldScene
         testMesh = new TestMesh();
 
         // Create planet entity with transform - DOUBLED SIZE
-        planet = new Entity(new Vector3(0, 0, 0), new Vector3(4.0f, 4.0f, 4.0f), "Planet");
-        planetRenderer = new PlanetRenderer(planet.Transform.Position, 1.0f, 32);
+        planet = new Entity(new Vector3(-100, 0, 0), new Vector3(4.0f, 4.0f, 4.0f), "Planet");
+        planetRenderer = new PlanetRenderer(planet.Transform.Position, 50.0f, 32);
 
-        // Create ship
-        ship = new Ship(new Vector3(5, 0, 0), 0.5f);
-
-        // Create ship renderer
-        shipRenderer = new ShipRenderer(ship.Transform.Position, 0.5f);
+        // Create ship (includes renderer)
+        ship = new Ship(new Vector3(5, 0, 0), 0.2f);
 
         // Create camera controller orbiting the ship (not the planet)
         cameraController = new CameraController(ship.Transform);
@@ -56,11 +57,13 @@ public class StarfieldScene
         sceneTexture = Raylib.LoadRenderTexture(1280, 720);
 
         Console.WriteLine("[StarfieldScene] Initialized with Voronoi starfield shader, 1 planet, 1 ship");
+        Console.WriteLine($"[StarfieldScene] Light Direction: {lightDirection}");
     }
 
     public void Update(float deltaTime)
     {
         HandleInput();
+        UpdateMouseRaycast();
 
         // Update entities
         planet.Update(deltaTime);
@@ -70,20 +73,85 @@ public class StarfieldScene
         cameraController.Update(deltaTime);
     }
 
-    private void HandleInput()
+    private void UpdateMouseRaycast()
     {
-        // WASD controls for ship movement
-        if (Raylib.IsKeyDown(KeyboardKey.W))
+        // Get mouse screen position
+        Vector2 mousePosition = GetMousePosition();
+
+        // Get camera
+        Camera3D camera = cameraController.GetCamera();
+
+        // Create ray from mouse screen position
+        Ray mouseRay = GetMouseRay(mousePosition, camera);
+
+        // Define plane at origin with Vector3.UnitY as normal
+        Vector3 planeNormal = Vector3.UnitY;
+        Vector3 planePoint = Vector3.Zero;
+
+        // Calculate ray-plane intersection
+        // Ray equation: P = origin + t * direction
+        // Plane equation: dot(P - planePoint, planeNormal) = 0
+        // Solving for t: t = dot(planePoint - origin, planeNormal) / dot(direction, planeNormal)
+
+        float denominator = Vector3.Dot(mouseRay.Direction, planeNormal);
+
+        // Check if ray is parallel to plane
+        if (Math.Abs(denominator) > 0.0001f)
         {
-            shipTargetSpeed = 1.0f;
-        }
-        else if (Raylib.IsKeyDown(KeyboardKey.S))
-        {
-            shipTargetSpeed = -0.5f;
+            float t = Vector3.Dot(planePoint - mouseRay.Position, planeNormal) / denominator;
+
+            // Only use intersection if it's in front of the ray
+            if (t >= 0)
+            {
+                mouseWorldPosition = mouseRay.Position + mouseRay.Direction * t;
+            }
+            else
+            {
+                mouseWorldPosition = null;
+            }
         }
         else
         {
-            shipTargetSpeed = 0f;
+            mouseWorldPosition = null;
+        }
+    }
+
+    private void HandleInput()
+    {
+        // Arrow keys to rotate light direction for testing sun alignment
+        float rotationSpeed = 0.02f;
+
+        if (Raylib.IsKeyDown(KeyboardKey.Left))
+        {
+            // Rotate around Y axis (left)
+            float angle = rotationSpeed;
+            float x = lightDirection.X * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
+            float z = lightDirection.X * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
+            lightDirection = Vector3.Normalize(new Vector3(x, lightDirection.Y, z));
+        }
+        if (Raylib.IsKeyDown(KeyboardKey.Right))
+        {
+            // Rotate around Y axis (right)
+            float angle = -rotationSpeed;
+            float x = lightDirection.X * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
+            float z = lightDirection.X * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
+            lightDirection = Vector3.Normalize(new Vector3(x, lightDirection.Y, z));
+        }
+        if (Raylib.IsKeyDown(KeyboardKey.Up))
+        {
+            // Rotate around X axis (up)
+            float angle = rotationSpeed;
+            float y = lightDirection.Y * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
+            float z = lightDirection.Y * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
+            lightDirection = Vector3.Normalize(new Vector3(lightDirection.X, y, z));
+        }
+        if (Raylib.IsKeyDown(KeyboardKey.Down))
+        {
+            // Rotate around X axis (down)
+            float angle = -rotationSpeed;
+            float y = lightDirection.Y * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
+            float z = lightDirection.Y * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
+            lightDirection = Vector3.Normalize(new Vector3(lightDirection.X, y, z));
         }
 
         // A/D for ship rotation
@@ -109,26 +177,7 @@ public class StarfieldScene
         ship.SetTargetSpeed(shipTargetSpeed);
         ship.SetHeading(shipTargetHeading);
 
-        // T key to switch camera target
-        if (Raylib.IsKeyPressed(KeyboardKey.T))
-        {
-            cameraTarget = (cameraTarget + 1) % 2;
-            if (cameraTarget == 0)
-            {
-                cameraController.SetTarget(planet.Transform);
-            }
-            else
-            {
-                cameraController.SetTarget(ship.Transform);
-            }
-        }
 
-        // R key to reset camera
-        if (Raylib.IsKeyPressed(KeyboardKey.R))
-        {
-            cameraController.Reset();
-            Console.WriteLine("[Camera] Reset to default position");
-        }
 
         // Ctrl+8 to start GIF recording
         if (Raylib.IsKeyPressed(KeyboardKey.Eight) && Raylib.IsKeyDown(KeyboardKey.LeftControl))
@@ -157,17 +206,23 @@ public class StarfieldScene
             // 3D mode with camera controller
             Raylib.BeginMode3D(camera);
 
-            // Draw background starfield
-            background.Draw(camera);
+            // Draw background starfield with sun
+            background.Draw(camera, lightDirection);
 
             // Draw planet with procedural shader
-            planetRenderer.Draw(camera);
+            planetRenderer.Draw(camera, lightDirection);
 
             // Draw test mesh (red cube) - offset from planet
             // testMesh.Draw(new Vector3(3.0f, 0, 0));
 
             // Draw ship with model and shader
-            shipRenderer.Draw(camera, lightPosition);
+            ship.Renderer.Draw(camera, lightDirection);
+
+            // Draw red cross at mouse raycast intersection
+            if (mouseWorldPosition.HasValue)
+            {
+                DrawRedCross(mouseWorldPosition.Value);
+            }
 
             Raylib.EndMode3D();
 
@@ -188,6 +243,27 @@ public class StarfieldScene
         }
     }
 
+    private void DrawRedCross(Vector3 position)
+    {
+        // Draw a red cross at the given position
+        float crossSize = 1.0f;
+        Color crossColor = Color.Red;
+
+        // Draw horizontal line
+        DrawLine3D(
+            position - new Vector3(crossSize, 0, 0),
+            position + new Vector3(crossSize, 0, 0),
+            crossColor
+        );
+
+        // Draw vertical line (along Z axis since Y is up)
+        DrawLine3D(
+            position - new Vector3(0, 0, crossSize),
+            position + new Vector3(0, 0, crossSize),
+            crossColor
+        );
+    }
+
     private void DrawUI()
     {
         int screenWidth = Raylib.GetScreenWidth();
@@ -196,19 +272,23 @@ public class StarfieldScene
         // Title
         Raylib.DrawText("PHANTOM NEBULA", 10, 10, 20, Color.White);
 
-        // Ship stats
-        Vector3 shipPos = ship.Transform.Position;
-        Raylib.DrawText($"Ship Position: {shipPos.X:F2}, {shipPos.Y:F2}, {shipPos.Z:F2}", 10, 40, 12, Color.White);
-        Raylib.DrawText($"Ship Speed: {ship.Systems.Speed:F2}", 10, 60, 12, Color.White);
-        Raylib.DrawText($"Ship Health: {ship.Health.Percent:P0}", 10, 80, 12, Color.White);
+        // // Ship stats
+        // Vector3 shipPos = ship.Transform.Position;
+        // Raylib.DrawText($"Ship Position: {shipPos.X:F2}, {shipPos.Y:F2}, {shipPos.Z:F2}", 10, 40, 12, Color.White);
+        // Raylib.DrawText($"Ship Speed: {ship.Systems.Speed:F2}", 10, 60, 12, Color.White);
+        // Raylib.DrawText($"Ship Health: {ship.Health.Percent:P0}", 10, 80, 12, Color.White);
 
         // Planet stats
-        Raylib.DrawText($"Planet Position: {planet.Transform.Position.X:F2}, {planet.Transform.Position.Y:F2}, {planet.Transform.Position.Z:F2}", 10, 100, 12, Color.White);
+        // Raylib.DrawText($"Planet Position: {planet.Transform.Position.X:F2}, {planet.Transform.Position.Y:F2}, {planet.Transform.Position.Z:F2}", 10, 100, 12, Color.White);
 
         // Camera info
         string targetName = cameraTarget == 0 ? "Planet" : "Ship";
         Raylib.DrawText($"Camera Target: {targetName}", 10, 140, 12, Color.Yellow);
         Raylib.DrawText($"Orbit Distance: {cameraController.OrbitDistance:F2}", 10, 160, 12, Color.Yellow);
+
+        // Light direction info
+        Raylib.DrawText($"Light Dir: ({lightDirection.X:F2}, {lightDirection.Y:F2}, {lightDirection.Z:F2})", 10, 180, 12, new Color(0, 255, 255, 255));
+        Raylib.DrawText("Arrow Keys: Rotate Light", 10, 200, 12, Color.Gray);
 
         // GIF Recording/Saving status
         if (gifRecorder.IsRecording)
@@ -221,10 +301,10 @@ public class StarfieldScene
         }
 
         // Controls
-        Raylib.DrawText("Controls:", 10, screenHeight - 140, 12, Color.Gray);
-        Raylib.DrawText("WASD - Move/Turn Ship | Left Click+Drag - Orbit Camera | Scroll - Zoom", 10, screenHeight - 120, 12, Color.Gray);
-        Raylib.DrawText("T - Toggle Camera Target | R - Reset Camera | Ctrl+8 - Record | Ctrl+9 - Stop", 10, screenHeight - 100, 12, Color.Gray);
-        Raylib.DrawText("ESC - Exit", 10, screenHeight - 80, 12, Color.Gray);
+        // Raylib.DrawText("Controls:", 10, screenHeight - 140, 12, Color.Gray);
+        // Raylib.DrawText("WASD - Move/Turn Ship | Left Click+Drag - Orbit Camera | Scroll - Zoom", 10, screenHeight - 120, 12, Color.Gray);
+        // Raylib.DrawText("T - Toggle Camera Target | R - Reset Camera | Ctrl+8 - Record | Ctrl+9 - Stop", 10, screenHeight - 100, 12, Color.Gray);
+        // Raylib.DrawText("ESC - Exit", 10, screenHeight - 80, 12, Color.Gray);
     }
 
     public void Dispose()

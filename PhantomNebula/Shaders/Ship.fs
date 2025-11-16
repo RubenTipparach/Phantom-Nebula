@@ -30,7 +30,7 @@ void main()
     vec3 diffuse = albedo.rgb * ndotl;
 
     // Ambient lighting
-    vec3 ambient = albedo.rgb * 0.02;
+    vec3 ambient = albedo.rgb * 0.1;
 
     // Specular lighting (Blinn-Phong)
     vec3 halfVec = normalize(lightDir + viewDir);
@@ -42,13 +42,13 @@ void main()
     vec3 rimLight = vec3(0.5, 0.7, 1.0) * rim * 0.01;
 
     // Combine lighting
-    vec3 lit = ambient + diffuse  + specular + rimLight ;
+    vec3 lit = ambient + diffuse  + specular;// + rimLight ;
 
     // Add emissive (glow from engine, etc)
     lit += albedo.rgb * emissive.rgb * 1.0;
 
     // Tone mapping and gamma correction
-    lit = pow(lit, vec3(1.0 / 2.2));
+    //lit = pow(lit, vec3(1.0 / 2.2));
 
     finalColor = vec4(lit, albedo.a);
 }

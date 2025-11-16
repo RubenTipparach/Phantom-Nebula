@@ -7,7 +7,7 @@ in vec2 vertexTexCoord;
 uniform mat4 mvp;
 uniform mat4 matModel;
 uniform vec3 cameraPos;
-uniform vec3 lightPos;
+uniform vec3 lightDir;
 
 out vec3 fragWorldPos;
 out vec3 fragNormal;
@@ -21,7 +21,7 @@ void main()
     fragWorldPos = worldPos.xyz;
     fragNormal = normalize(mat3(matModel) * vertexNormal);
     fragViewDir = normalize(cameraPos - worldPos.xyz);
-    fragLightDir = normalize(lightPos - worldPos.xyz);
+    fragLightDir = normalize(lightDir);  // Directional light, already a direction
     fragTexCoord = vertexTexCoord;
     gl_Position = mvp * vec4(vertexPosition, 1.0);
 }

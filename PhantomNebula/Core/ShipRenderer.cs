@@ -82,7 +82,12 @@ public class ShipRenderer
         }
     }
 
-    public void Draw(Camera3D camera, Vector3 lightPosition)
+    public void UpdatePosition(Vector3 newPosition)
+    {
+        position = newPosition;
+    }
+
+    public void Draw(Camera3D camera, Vector3 lightDirection)
     {
         if (shipModel.MaterialCount == 0)
             return;
@@ -98,9 +103,9 @@ public class ShipRenderer
             if (cameraPosLoc != -1)
                 SetShaderValue(shipShader, cameraPosLoc, camera.Position, ShaderUniformDataType.Vec3);
 
-            int lightPosLoc = GetShaderLocation(shipShader, "lightPos");
-            if (lightPosLoc != -1)
-                SetShaderValue(shipShader, lightPosLoc, lightPosition, ShaderUniformDataType.Vec3);
+            int lightDirLoc = GetShaderLocation(shipShader, "lightDir");
+            if (lightDirLoc != -1)
+                SetShaderValue(shipShader, lightDirLoc, lightDirection, ShaderUniformDataType.Vec3);
 
             int timeLoc = GetShaderLocation(shipShader, "time");
             if (timeLoc != -1)

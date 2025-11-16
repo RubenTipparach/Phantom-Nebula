@@ -14,6 +14,9 @@ public class Ship : Entity
     public ShipSystems Systems { get; private set; } = new();
     public HealthStats Health { get; private set; } = new();
 
+    // Ship renderer
+    public ShipRenderer Renderer { get; private set; }
+
     // Movement
     private Vector2 heading = Vector2.UnitY;
     private float targetSpeed = 0f;
@@ -27,6 +30,9 @@ public class Ship : Entity
         Systems.Position = Transform.Position;
         Systems.Heading = heading;
         Systems.Speed = currentSpeed;
+
+        // Initialize renderer
+        Renderer = new ShipRenderer(Transform.Position, scale);
     }
 
     /// <summary>
@@ -50,6 +56,9 @@ public class Ship : Entity
         Systems.Position = Transform.Position;
         Systems.Speed = currentSpeed;
         Systems.Heading = heading;
+
+        // Update renderer position
+        Renderer.UpdatePosition(Transform.Position);
 
         // Call base update for children
         base.Update(deltaTime);

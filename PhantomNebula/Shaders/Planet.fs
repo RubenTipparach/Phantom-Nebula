@@ -7,7 +7,7 @@ in vec3 fragViewDir;
 out vec4 finalColor;
 
 uniform float time;
-uniform vec3 sunPosition;
+uniform vec3 lightDir;
 uniform vec3 cameraPos;
 
 //=============================================================================
@@ -355,8 +355,8 @@ void main()
     vec3 normal = normalize(fragNormal);
     vec3 viewDir = normalize(fragViewDir);
 
-    // Calculate light direction
-    vec3 lightDir = normalize(sunPosition - fragWorldPos);
+    // Use directional light (already normalized, points toward sun)
+    vec3 lightDirection = normalize(lightDir);
 
     // Get base planet surface color
     float height;
@@ -376,10 +376,10 @@ void main()
     float shadowCloudDensity = GetCloudDensity(normal, time, CLOUD_SHADOW_OFFSET);
 
     // Calculate lighting
-    vec3 litColor = CalculateLighting(fragWorldPos, finalNormal, surfaceColor, lightDir, viewDir, cloudDensity, shadowCloudDensity);
+    vec3 litColor = CalculateLighting(fragWorldPos, finalNormal, surfaceColor, lightDirection, viewDir, cloudDensity, shadowCloudDensity);
 
     // Add atmosphere glow
-    vec3 atmosphere = GetAtmosphere(viewDir, normal, lightDir);
+    vec3 atmosphere = GetAtmosphere(viewDir, normal, lightDirection);
     vec3 finalColorOut = litColor + atmosphere * ATMOSPHERE_STRENGTH;
 
     // Gamma correction

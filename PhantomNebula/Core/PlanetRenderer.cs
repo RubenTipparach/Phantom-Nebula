@@ -60,7 +60,7 @@ public class PlanetRenderer
         }
     }
 
-    public void Draw(Camera3D camera)
+    public void Draw(Camera3D camera, Vector3 lightDirection)
     {
         if (!shaderLoaded)
         {
@@ -79,9 +79,9 @@ public class PlanetRenderer
         if (timeLoc != -1)
             SetShaderValue(planetShader, timeLoc, timeValue, ShaderUniformDataType.Float);
 
-        int sunPosLoc = GetShaderLocation(planetShader, "sunPosition");
-        if (sunPosLoc != -1)
-            SetShaderValue(planetShader, sunPosLoc, new Vector3(100.0f, 50.0f, 0.0f), ShaderUniformDataType.Vec3);
+        int lightDirLoc = GetShaderLocation(planetShader, "lightDir");
+        if (lightDirLoc != -1)
+            SetShaderValue(planetShader, lightDirLoc, lightDirection, ShaderUniformDataType.Vec3);
 
         // Draw the planet with shader
         DrawModel(planetModel, position, 1.0f, Color.White);

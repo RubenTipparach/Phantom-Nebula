@@ -104,22 +104,40 @@ public class BackgroundRenderer
         return invertedMesh;
     }
 
-    public void Draw(Camera3D camera)
+    public void Draw(Camera3D camera, Vector3 lightDirection)
     {
         if (!shaderLoaded)
         {
             return;
         }
 
-        // Disable backface culling and depth writing for background
+        // Set shader uniforms
+        float timeValue = (float)GetTime();
+
+        int cameraPosLoc = GetShaderLocation(backgroundShader, "cameraPosition");
+        if (cameraPosLoc != -1)
+            SetShaderValue(backgroundShader, cameraPosLoc, camera.Position, ShaderUniformDataType.Vec3);
+
+        int lightDirLoc = GetShaderLocation(backgroundShader, "lightDirection");
+        if (lightDirLoc != -1)
+            SetShaderValue(backgroundShader, lightDirLoc, lightDirection, ShaderUniformDataType.Vec3);
+
+        int timeLoc = GetShaderLocation(backgroundShader, "time");
+        if (timeLoc != -1)
+            SetShaderValue(backgroundShader, timeLoc, timeValue, ShaderUniformDataType.Float);
+
+        // Disable backface culling, depth writing, and depth test for background
+        // This ensures starfield always renders behind everything
         Rlgl.DisableBackfaceCulling();
         Rlgl.DisableDepthMask();
+        Rlgl.DisableDepthTest();
 
         // Draw background sphere at camera position to wrap around it
         // Large scale so it surrounds everything
         DrawModel(model, camera.Position, 1000.0f, Color.White);
 
-        // Re-enable backface culling and depth writing
+        // Re-enable backface culling, depth writing, and depth test
+        Rlgl.EnableDepthTest();
         Rlgl.EnableDepthMask();
         Rlgl.EnableBackfaceCulling();
     }

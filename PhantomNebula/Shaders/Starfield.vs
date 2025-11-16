@@ -12,6 +12,8 @@ in vec4 vertexColor;
 
 // Input uniform values
 uniform mat4 mvp;
+uniform mat4 matModel;
+uniform vec3 cameraPosition;
 
 // Output to fragment shader
 out vec3 fragPosition;
@@ -20,8 +22,11 @@ out vec2 fragTexCoord;
 
 void main()
 {
-    // Pass normalized vertex position as direction
-    fragPosition = normalize(vertexPosition);
+    // Calculate world position
+    vec4 worldPos = matModel * vec4(vertexPosition, 1.0);
+
+    // Calculate view direction from camera to this point on the sphere
+    fragPosition = normalize(worldPos.xyz - cameraPosition);
     fragNormal = normalize(vertexNormal);
     fragTexCoord = vertexTexCoord;
 
