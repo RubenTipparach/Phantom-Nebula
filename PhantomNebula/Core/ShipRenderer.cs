@@ -18,6 +18,7 @@ public class ShipRenderer
     private bool shaderLoaded = false;
     private Vector3 position;
     private float scale;
+    private float rotationAngle = 0f; // Rotation in radians around Y axis
 
     public ShipRenderer(Vector3 shipPosition, float shipScale = 1.0f)
     {
@@ -87,6 +88,11 @@ public class ShipRenderer
         position = newPosition;
     }
 
+    public void UpdateRotation(float angleRadians)
+    {
+        rotationAngle = angleRadians;
+    }
+
     public void Draw(Camera3D camera, Vector3 lightDirection)
     {
         if (shipModel.MaterialCount == 0)
@@ -112,8 +118,12 @@ public class ShipRenderer
                 SetShaderValue(shipShader, timeLoc, timeValue, ShaderUniformDataType.Float);
         }
 
-        // Draw the ship model
-        DrawModel(shipModel, position, scale, Color.White);
+        // Draw the ship model with rotation around Y axis
+        // Convert radians to degrees for DrawModelEx
+        Vector3 rotationAxis = Vector3.UnitY;
+        float rotationDegrees = rotationAngle * 180f / MathF.PI;
+
+        DrawModelEx(shipModel, position, rotationAxis, rotationDegrees, new Vector3(scale, scale, scale), Color.White);
     }
 
     public void Dispose()

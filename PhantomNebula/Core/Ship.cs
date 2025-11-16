@@ -17,18 +17,17 @@ public class Ship : Entity
     // Ship renderer
     public ShipRenderer Renderer { get; private set; }
 
-    // Movement
-    private Vector2 heading = Vector2.UnitY;
+
     private float targetSpeed = 0f;
     private float currentSpeed = 0f;
     private const float SpeedSmoothing = 0.08f;
-    private const float TurnRate = 0.02f;
+    private const float TurnRate = 0.0002f;
 
     public Ship(Vector3 initialPosition, float scale = 1.0f) : base(initialPosition, new Vector3(scale, scale, scale), "Ship")
     {
         Health.Init();
         Systems.Position = Transform.Position;
-        Systems.Heading = heading;
+        Systems.Heading = new Vector2(Transform.Forward.X, Transform.Forward.Z);
         Systems.Speed = currentSpeed;
 
         // Initialize renderer
@@ -41,24 +40,22 @@ public class Ship : Entity
     public override void Update(float deltaTime)
     {
         // Update heading with smooth rotation
-        heading = Systems.CalculateRotation(heading, Systems.Heading, TurnRate);
+        var offsetHeading = Systems.CalculateRotation(Systems.Heading, Systems.TargetHeading, TurnRate);
 
         // Update speed with smooth interpolation
         currentSpeed = Systems.CalculateSpeed(currentSpeed, targetSpeed, SpeedSmoothing);
 
-        // Calculate movement offset
-        Vector2 movement = Systems.CalculateMovement(currentSpeed, heading, Systems.MaxSpeed);
-
-        // Update position
-        Transform.Position += new Vector3(movement.X, 0, movement.Y);
-
         // Update systems state
         Systems.Position = Transform.Position;
         Systems.Speed = currentSpeed;
-        Systems.Heading = heading;
+        // Note: Don't overwrite Systems.Heading here - it holds the target heading that CalculateRotation uses!
 
-        // Update renderer position
+        // Update renderer position and rotation
         Renderer.UpdatePosition(Transform.Position);
+
+        // Convert 2D heading vector to rotation angle (around Y axis)
+        float rotationAngle = MathF.Atan2(offsetHeading.X, offsetHeading.Y);
+        Renderer.UpdateRotation(rotationAngle);
 
         // Call base update for children
         base.Update(deltaTime);
@@ -97,7 +94,7 @@ public class Ship : Entity
     /// </summary>
     public bool IsTargetInArc(Vector3 targetPosition, float arcStart, float arcEnd)
     {
-        return Systems.IsInFiringArc(Transform.Position, heading, targetPosition, arcStart, arcEnd);
+        return Systems.IsInFiringArc(Transform.Position, Systems.Heading, targetPosition, arcStart, arcEnd);
     }
 
     /// <summary>
@@ -114,6 +111,11 @@ public class Ship : Entity
     public void Heal(float healAmount)
     {
         Health.Heal(healAmount);
+    }
+
+    public void SetTargetHeading(Vector2 heading2D)
+    {
+        Systems.TargetHeading = heading2D;
     }
 
     /// <summary>
