@@ -20,6 +20,10 @@ public class CameraController
     private float orbitSpeed = 0.5f;
     private float zoomSpeed = 0.5f;
 
+    // Camera clipping planes
+    public float NearPlane { get; set; } = 0.1f;
+    public float FarPlane { get; set; } = 10000.0f;
+
     // Angle parameters
     private float yaw = 0.0f;
     private float pitch = 45.0f * ((float)Math.PI / 180.0f);
@@ -114,7 +118,25 @@ public class CameraController
     /// </summary>
     public Camera3D GetCamera()
     {
+        // Note: Raylib doesn't directly support near/far in Camera3D struct
+        // You need to manually set projection matrix if needed
+        // This is done in BeginMode3D by Raylib using default values
+        // To customize, call Rlgl.SetMatrixProjection before rendering
         return camera;
+    }
+
+    /// <summary>
+    /// Apply custom projection matrix with near/far planes
+    /// Call this before BeginMode3D to override projection
+    /// </summary>
+    public void SetProjectionMatrix(int screenWidth, int screenHeight)
+    {
+        float aspect = (float)screenWidth / screenHeight;
+        float fovY = camera.FovY * ((float)Math.PI / 180.0f);
+
+        // Create perspective projection matrix
+        Matrix4x4 projection = Raylib_cs.Raymath.MatrixPerspective(fovY, aspect, NearPlane, FarPlane);
+        Rlgl.SetMatrixProjection(projection);
     }
 
     /// <summary>

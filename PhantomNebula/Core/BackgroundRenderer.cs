@@ -126,19 +126,13 @@ public class BackgroundRenderer
         if (timeLoc != -1)
             SetShaderValue(backgroundShader, timeLoc, timeValue, ShaderUniformDataType.Float);
 
-        // Disable backface culling, depth writing, and depth test for background
-        // This ensures starfield always renders behind everything
+        // Disable backface culling so we can see inside the sphere
         Rlgl.DisableBackfaceCulling();
-        Rlgl.DisableDepthMask();
-        Rlgl.DisableDepthTest();
 
         // Draw background sphere at camera position to wrap around it
-        // Large scale so it surrounds everything
-        DrawModel(model, camera.Position, 1000.0f, Color.White);
+        DrawModel(model, camera.Position, 100.0f, Color.White);
 
-        // Re-enable backface culling, depth writing, and depth test
-        Rlgl.EnableDepthTest();
-        Rlgl.EnableDepthMask();
+        // Re-enable backface culling
         Rlgl.EnableBackfaceCulling();
     }
 

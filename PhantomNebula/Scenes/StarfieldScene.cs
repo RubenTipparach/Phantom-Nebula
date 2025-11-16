@@ -21,8 +21,8 @@ public class StarfieldScene
     private GifRecorder gifRecorder;
     private RenderTexture2D sceneTexture;
 
-    // Directional light - sun position
-    private Vector3 lightDirection = Vector3.Normalize(new Vector3(0.0f, 0.26f, 0.96f));
+    // Directional light - loaded from config
+    private Vector3 lightDirection;
 
     // Input state
     private float shipTargetSpeed = 0f;
@@ -34,18 +34,35 @@ public class StarfieldScene
 
     public StarfieldScene()
     {
+        // Load configuration
+        var config = GameConfig.Instance;
+
+        // Set light direction from config
+        lightDirection = Vector3.Normalize(new Vector3(
+            config.LightDirectionX,
+            config.LightDirectionY,
+            config.LightDirectionZ
+        ));
+
         // Initialize background renderer with starfield shader
         background = new BackgroundRenderer();
 
         // Initialize test mesh (red cube)
         testMesh = new TestMesh();
 
-        // Create planet entity with transform - DOUBLED SIZE
-        planet = new Entity(new Vector3(-100, 0, 0), new Vector3(4.0f, 4.0f, 4.0f), "Planet");
+        // Create planet entity with transform from config
+        planet = new Entity(
+            new Vector3(config.PlanetPositionX, config.PlanetPositionY, config.PlanetPositionZ),
+            new Vector3(config.PlanetScale, config.PlanetScale, config.PlanetScale),
+            "Planet"
+        );
         planetRenderer = new PlanetRenderer(planet.Transform.Position, 50.0f, 32);
 
-        // Create ship (includes renderer)
-        ship = new Ship(new Vector3(5, 0, 0), 0.2f);
+        // Create ship from config (includes renderer)
+        ship = new Ship(
+            new Vector3(config.ShipPositionX, config.ShipPositionY, config.ShipPositionZ),
+            config.ShipScale
+        );
 
         // Create camera controller orbiting the ship (not the planet)
         cameraController = new CameraController(ship.Transform);
@@ -118,10 +135,12 @@ public class StarfieldScene
 
     private void HandleInput()
     {
-        // Arrow keys to rotate light direction for testing sun alignment
-        float rotationSpeed = 0.02f;
+        // Arrow keys to rotate light direction for testing sun alignment (only in debug mode)
+        if (GameConfig.Instance.EnableLightDirectionControls)
+        {
+            float rotationSpeed = 0.02f;
 
-        if (Raylib.IsKeyDown(KeyboardKey.Left))
+            if (Raylib.IsKeyDown(KeyboardKey.Left))
         {
             // Rotate around Y axis (left)
             float angle = rotationSpeed;
@@ -152,6 +171,7 @@ public class StarfieldScene
             float y = lightDirection.Y * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
             float z = lightDirection.Y * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
             lightDirection = Vector3.Normalize(new Vector3(lightDirection.X, y, z));
+        }
         }
 
         // A/D for ship rotation
