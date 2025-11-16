@@ -22,14 +22,18 @@ public class Ship : Core.Transform, IDisposable
 
     private float targetSpeed = 0f;
     private float currentSpeed = 0f;
-    private const float SpeedSmoothing = 0.08f;
-    private const float TurnRate = 0.4f;
-    private const float MaxRollAngle = 0.2f; // Maximum roll in radians (~28 degrees)
-    private const float RollSpeed = 0.1f; // How fast roll interpolates
+    public const float BaseShipSpeed = 1f; // Base ship speed in units per second (at speed = 1.0)
+    private const float SpeedSmoothing = .5f; // Speed interpolation rate (units per second)
+    private const float TurnRate = .5f; // Turn rate (radians per second) - already frame-independent
+    private const float MaxRollAngle = 0.5f; // Maximum roll in radians (~28 degrees)
+    private const float RollSpeed = 4f; // Roll interpolation rate (units per second)
 
     // Track yaw and roll separately
     private Quaternion yawRotation = Quaternion.Identity; // Yaw-only rotation around world Y-axis
     private float currentRoll = 0f; // Current roll angle
+
+    // Public state
+    public bool IsRotating { get; private set; } = false;
 
     public Ship(Vector3 initialPosition, float scale = 1.0f)
     {
@@ -57,7 +61,7 @@ public class Ship : Core.Transform, IDisposable
         float dotProduct = Vector2.Dot(currentHeading, Systems.TargetHeading);
         float angleToTarget = MathF.Acos(Math.Clamp(dotProduct, -1f, 1f));
 
-        // Update heading with smooth rotation
+        // Update heading with smooth rotation (frame-independent)
         var rotationAngleY = Systems.CalculateRotation(currentHeading, Systems.TargetHeading, TurnRate * deltaTime);
 
         // Prevent overshooting - clamp rotation if we're close to target
@@ -65,15 +69,21 @@ public class Ship : Core.Transform, IDisposable
         if (angleToTarget < stopThreshold)
         {
             rotationAngleY = 0f; // Stop rotating
+            IsRotating = false;
         }
         else if (MathF.Abs(rotationAngleY) > angleToTarget)
         {
             // About to overshoot - clamp to exact angle remaining
             rotationAngleY = angleToTarget * MathF.Sign(rotationAngleY);
+            IsRotating = true;
+        }
+        else
+        {
+            IsRotating = true;
         }
 
-        // Update speed with smooth interpolation
-        currentSpeed = Systems.CalculateSpeed(currentSpeed, targetSpeed, SpeedSmoothing);
+        // Update speed with smooth interpolation (frame-independent)
+        currentSpeed = Systems.CalculateSpeed(currentSpeed, targetSpeed, SpeedSmoothing * deltaTime);
 
         // Calculate target roll based on rotation direction
         // Positive rotationAngle = turning right, negative = turning left
@@ -85,8 +95,8 @@ public class Ship : Core.Transform, IDisposable
             targetRoll = -MathF.Sign(rotationAngleY) * MaxRollAngle;
         }
 
-        // Smoothly interpolate current roll towards target roll
-        currentRoll += (targetRoll - currentRoll) * RollSpeed;
+        // Smoothly interpolate current roll towards target roll (frame-independent)
+        currentRoll += (targetRoll - currentRoll) * RollSpeed * deltaTime;
 
         // Apply yaw rotation around WORLD Y-axis (always global up)
         Quaternion yawDelta = Quaternion.CreateFromAxisAngle(Vector3.UnitY, rotationAngleY);
@@ -97,6 +107,15 @@ public class Ship : Core.Transform, IDisposable
         Vector3 forwardDir = Vector3.Transform(Vector3.UnitZ, yawRotation);
         Quaternion rollRotation = Quaternion.CreateFromAxisAngle(forwardDir, currentRoll);
         Rotation = rollRotation * yawRotation;
+
+        // Move ship forward along XZ plane based on current speed
+        if (currentSpeed > 0.0f)
+        {
+            // Get forward direction on XZ plane
+            Vector3 moveDirection = Vector3.Normalize(new Vector3(Forward.X, 0, Forward.Z));
+            float moveSpeed = currentSpeed * BaseShipSpeed; // Scale speed by base ship speed
+            Position += moveDirection * moveSpeed * deltaTime;
+        }
 
         // Update systems state at end with current transform values (AFTER rotation applied)
         Systems.Position = Position;

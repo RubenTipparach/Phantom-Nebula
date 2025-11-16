@@ -31,6 +31,8 @@ public class CameraController
     // Mouse tracking
     private Vector2 lastMousePos = Vector2.Zero;
     private bool isDragging = false;
+    private bool dragStartedOnUI = false;
+    private bool mouseButtonWasDown = false;
 
     public CameraController(ITransform targetTransform)
     {
@@ -51,40 +53,69 @@ public class CameraController
     /// <summary>
     /// Update camera based on input and target position
     /// </summary>
-    public void Update(float deltaTime)
+    public void Update(float deltaTime, bool mouseOverUI = false)
     {
-        HandleMouseInput();
+        HandleMouseInput(mouseOverUI);
         UpdateCameraPosition();
     }
 
-    private void HandleMouseInput()
+    private void HandleMouseInput(bool mouseOverUI)
     {
         Vector2 currentMousePos = Raylib.GetMousePosition();
+        bool mouseButtonDown = Raylib.IsMouseButtonDown(MouseButton.Left);
+
+        // Detect button press (transition from up to down)
+        if (mouseButtonDown && !mouseButtonWasDown)
+        {
+            // Button just pressed - record if it started on UI
+            dragStartedOnUI = mouseOverUI;
+        }
 
         // Left mouse button dragging for rotation
-        if (Raylib.IsMouseButtonDown(MouseButton.Left))
+        if (mouseButtonDown)
         {
+            // Don't allow any camera interaction if drag started on UI
+            if (dragStartedOnUI)
+            {
+                mouseButtonWasDown = true;
+                return;
+            }
+
             if (!isDragging)
             {
+                // Start dragging (we know it didn't start on UI from check above)
                 lastMousePos = currentMousePos;
                 isDragging = true;
             }
 
-            Vector2 delta = currentMousePos - lastMousePos;
+            // Stop dragging if mouse enters UI area while dragging
+            if (isDragging && mouseOverUI)
+            {
+                isDragging = false;
+            }
+            // Continue updating camera if dragging and not over UI
+            else if (isDragging)
+            {
+                Vector2 delta = currentMousePos - lastMousePos;
 
-            // Update angles based on mouse movement
-            yaw -= delta.X * orbitSpeed * 0.01f;
-            pitch += delta.Y * orbitSpeed * 0.01f;
+                // Update angles based on mouse movement
+                yaw -= delta.X * orbitSpeed * 0.01f;
+                pitch += delta.Y * orbitSpeed * 0.01f;
 
-            // Clamp pitch to avoid flipping
-            pitch = float.Clamp(pitch, -MathF.PI * 0.49f, MathF.PI * 0.49f);
+                // Clamp pitch to avoid flipping
+                pitch = float.Clamp(pitch, -MathF.PI * 0.49f, MathF.PI * 0.49f);
 
-            lastMousePos = currentMousePos;
+                lastMousePos = currentMousePos;
+            }
         }
         else
         {
+            // Button released - reset all drag states
             isDragging = false;
+            dragStartedOnUI = false;
         }
+
+        mouseButtonWasDown = mouseButtonDown;
 
         // Scroll wheel for zoom
         float scrollDelta = Raylib.GetMouseWheelMove();

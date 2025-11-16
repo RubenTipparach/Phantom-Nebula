@@ -10,14 +10,14 @@
 #define DUST_ALPHA 0.2                // Overall dust opacity (0.0 - 1.0)
 #define DUST_BRIGHTNESS_MIN 0.2       // Minimum brightness multiplier
 #define DUST_BRIGHTNESS_MAX 0.8       // Maximum brightness multiplier
-#define ANIMATION_SPEED 0.1          // Speed of dust animation over time
+#define ANIMATION_SPEED 0.01          // Speed of dust animation over time
 #define ANIMATION_BLEND 0.6           // How much animation affects static pattern
 #define FBM_OCTAVES 6                 // Number of noise layers (more = more detail, slower)
 #define DUST_COLOR vec3(0.9, 0.95, 1.0)  // Dust color tint (slightly blue-white)
-#define SHIP_CLEARANCE_RADIUS 5.0    // Radius around ship where dust fades out
+#define SHIP_CLEARANCE_RADIUS 3.0    // Radius around ship where dust fades out
 #define SHIP_CLEARANCE_FALLOFF 2.0   // Smoothness of the falloff edge
-#define PLANE_FADE_RADIUS 200.0      // Distance from ship where plane starts to fade
-#define PLANE_FADE_FALLOFF 50.0      // Smoothness of the radial fade
+#define PLANE_FADE_RADIUS 100.0      // Distance from ship where plane starts to fade
+#define PLANE_FADE_FALLOFF 400.0      // Smoothness of the radial fade
 
 in vec2 fragTexCoord;
 in vec3 fragWorldPos;

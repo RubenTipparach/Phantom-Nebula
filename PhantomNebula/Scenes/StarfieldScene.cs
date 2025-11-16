@@ -28,11 +28,12 @@ public class StarfieldScene
     // Input state
     private float shipTargetSpeed = 0f;
     private Vector2 shipTargetHeading = Vector2.UnitY;
+    private bool isMouseOverUI = false;
     private int cameraTarget = 0; // 0 = planet, 1 = ship
 
     // Mouse raycast
     private Vector3? mouseWorldPosition = null;
-    private Vector3? lastClickPosition = null; // Track last right-click for debug visualization
+    private Vector3? lastClickPosition = null;
 
     public StarfieldScene()
     {
@@ -77,6 +78,9 @@ public class StarfieldScene
 
     public void Update(float deltaTime)
     {
+        // Check if mouse is over UI elements before processing input
+        CheckMouseOverUI();
+
         HandleInput();
         UpdateMouseRaycast();
 
@@ -86,8 +90,25 @@ public class StarfieldScene
         // Update ship
         ship.Update(deltaTime);
 
-        // Update camera controller
-        cameraController.Update(deltaTime);
+        // Update camera controller (ignore mouse input when interacting with UI)
+        cameraController.Update(deltaTime, isMouseOverUI);
+    }
+
+    private void CheckMouseOverUI()
+    {
+        int screenWidth = Raylib.GetScreenWidth();
+        int screenHeight = Raylib.GetScreenHeight();
+
+        // Speed slider bounds
+        float sliderWidth = 20;
+        float sliderHeight = 300;
+        float sliderX = screenWidth - 50;
+        float sliderY = (screenHeight - sliderHeight) / 2;
+
+        Vector2 mousePos = Raylib.GetMousePosition();
+        Rectangle sliderBounds = new(sliderX, sliderY, sliderWidth, sliderHeight);
+
+        isMouseOverUI = Raylib.CheckCollisionPointRec(mousePos, sliderBounds);
     }
 
     private void UpdateMouseRaycast()
@@ -197,31 +218,31 @@ public class StarfieldScene
         // A/D for ship rotation - rotate relative to current ship heading
         Vector2 currentShipHeading = Vector2.Normalize(new Vector2(ship.Forward.X, ship.Forward.Z));
 
-        if (Raylib.IsKeyDown(KeyboardKey.A))
-        {
-            // Turn left (90 degrees counter-clockwise from current heading)
-            float angle = MathF.PI / 2;
-            shipTargetHeading = new Vector2(
-                currentShipHeading.X * MathF.Cos(angle) - currentShipHeading.Y * MathF.Sin(angle),
-                currentShipHeading.X * MathF.Sin(angle) + currentShipHeading.Y * MathF.Cos(angle)
-            );
-            ship.SetTargetHeading(shipTargetHeading);
-        }
-        else if (Raylib.IsKeyDown(KeyboardKey.D))
-        {
-            // Turn right (90 degrees clockwise from current heading)
-            float angle = -MathF.PI / 2;
-            shipTargetHeading = new Vector2(
-                currentShipHeading.X * MathF.Cos(angle) - currentShipHeading.Y * MathF.Sin(angle),
-                currentShipHeading.X * MathF.Sin(angle) + currentShipHeading.Y * MathF.Cos(angle)
-            );
-            ship.SetTargetHeading(shipTargetHeading);
-        }
-        else
-        {
-            // No input - maintain current heading as target
-            ship.SetTargetHeading(currentShipHeading);
-        }
+        // if (Raylib.IsKeyDown(KeyboardKey.A))
+        // {
+        //     // Turn left (90 degrees counter-clockwise from current heading)
+        //     float angle = MathF.PI / 2;
+        //     shipTargetHeading = new Vector2(
+        //         currentShipHeading.X * MathF.Cos(angle) - currentShipHeading.Y * MathF.Sin(angle),
+        //         currentShipHeading.X * MathF.Sin(angle) + currentShipHeading.Y * MathF.Cos(angle)
+        //     );
+        //     ship.SetTargetHeading(shipTargetHeading);
+        // }
+        // else if (Raylib.IsKeyDown(KeyboardKey.D))
+        // {
+        //     // Turn right (90 degrees clockwise from current heading)
+        //     float angle = -MathF.PI / 2;
+        //     shipTargetHeading = new Vector2(
+        //         currentShipHeading.X * MathF.Cos(angle) - currentShipHeading.Y * MathF.Sin(angle),
+        //         currentShipHeading.X * MathF.Sin(angle) + currentShipHeading.Y * MathF.Cos(angle)
+        //     );
+        //     ship.SetTargetHeading(shipTargetHeading);
+        // }
+        // else
+        // {
+        //     // No input - maintain current heading as target
+        //     ship.SetTargetHeading(currentShipHeading);
+        // }
 
 
 
@@ -276,8 +297,11 @@ public class StarfieldScene
                 DrawRedCross(mouseWorldPosition.Value);
             }
 
-            // Draw debug lines for ship rotation
-            DrawShipDebugLines();
+            // Draw debug lines for ship rotation (only if ship is turning)
+            if (ship.IsRotating)
+            {
+                DrawShipDebugLines();
+            }
 
             Raylib.EndMode3D();
         }
@@ -324,59 +348,55 @@ public class StarfieldScene
         Vector3 shipPosition = ship.Position;
 
 
-        // Draw line for ship heading direction (green)
-        // Convert ship's 2D heading to 3D direction and normalize
-        Vector2 shipHeading = ship.Systems.Heading;
-        Vector3 headingDirection = Vector3.Normalize(new Vector3(shipHeading.X, 0, shipHeading.Y));
+        // Draw line for current ship heading direction (green)
+        Vector2 currentHeading = ship.Systems.Heading;
+        Vector3 currentHeadingDir = Vector3.Normalize(new Vector3(currentHeading.X, 0, currentHeading.Y));
         float lineLength = 1.5f;
-        Vector3 headingEndPoint = shipPosition + (headingDirection * lineLength);
+        Vector3 headingEndPoint = shipPosition + (currentHeadingDir * lineLength);
         DrawLine3D(shipPosition, headingEndPoint, Color.Green);
 
-        // Draw line from ship to last clicked position (yellow)
-        if (lastClickPosition.HasValue)
+        // Draw line for target heading direction (yellow)
+        Vector2 targetHeading = ship.Systems.TargetHeading;
+        Vector3 targetHeadingDir = Vector3.Normalize(new Vector3(targetHeading.X, 0, targetHeading.Y));
+        Vector3 targetEndPoint = shipPosition + (targetHeadingDir * lineLength);
+        DrawLine3D(shipPosition, targetEndPoint, Color.Yellow);
+
+        // Draw arc between current and target heading if there's an angle between them
+        float dotProduct = Vector3.Dot(currentHeadingDir, targetHeadingDir);
+        float angle = MathF.Acos(Math.Clamp(dotProduct, -1f, 1f));
+
+        if (angle > 0.01f) // Only draw if there's a meaningful angle
         {
-            Vector3 targetDirection = Vector3.Normalize(lastClickPosition.Value - shipPosition);
-            Vector3 targetEndPoint = shipPosition + (targetDirection * lineLength);
-            DrawLine3D(shipPosition, targetEndPoint, Color.Yellow);
+            // Draw arc with multiple line segments
+            int arcSegments = 16;
+            float arcRadius = 1.2f; // Slightly shorter than the direction lines
 
-            // Draw arc between heading and target if there's an angle between them
-            float dotProduct = Vector3.Dot(headingDirection, targetDirection);
-            float angle = MathF.Acos(Math.Clamp(dotProduct, -1f, 1f));
-
-            if (angle > 0.01f) // Only draw if there's a meaningful angle
+            for (int i = 0; i < arcSegments; i++)
             {
-                // Draw arc with multiple line segments
-                int arcSegments = 16;
-                float arcRadius = 1.2f; // Slightly shorter than the direction lines
+                float t1 = (float)i / arcSegments;
+                float t2 = (float)(i + 1) / arcSegments;
 
-                for (int i = 0; i < arcSegments; i++)
-                {
-                    float t1 = (float)i / arcSegments;
-                    float t2 = (float)(i + 1) / arcSegments;
+                // Slerp between current and target heading direction
+                Quaternion q1 = Quaternion.Slerp(
+                    Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(currentHeadingDir.X, currentHeadingDir.Z)),
+                    Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(targetHeadingDir.X, targetHeadingDir.Z)),
+                    t1
+                );
+                Quaternion q2 = Quaternion.Slerp(
+                    Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(currentHeadingDir.X, currentHeadingDir.Z)),
+                    Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(targetHeadingDir.X, targetHeadingDir.Z)),
+                    t2
+                );
 
-                    // Slerp between heading and target direction
-                    Quaternion q1 = Quaternion.Slerp(
-                        Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(headingDirection.X, headingDirection.Z)),
-                        Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(targetDirection.X, targetDirection.Z)),
-                        t1
-                    );
-                    Quaternion q2 = Quaternion.Slerp(
-                        Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(headingDirection.X, headingDirection.Z)),
-                        Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(targetDirection.X, targetDirection.Z)),
-                        t2
-                    );
+                Vector3 dir1 = Vector3.Transform(Vector3.UnitZ, q1);
+                Vector3 dir2 = Vector3.Transform(Vector3.UnitZ, q2);
 
-                    Vector3 dir1 = Vector3.Transform(Vector3.UnitZ, q1);
-                    Vector3 dir2 = Vector3.Transform(Vector3.UnitZ, q2);
+                Vector3 p1 = shipPosition + Vector3.Normalize(new Vector3(dir1.X, 0, dir1.Z)) * arcRadius;
+                Vector3 p2 = shipPosition + Vector3.Normalize(new Vector3(dir2.X, 0, dir2.Z)) * arcRadius;
 
-                    Vector3 p1 = shipPosition + Vector3.Normalize(new Vector3(dir1.X, 0, dir1.Z)) * arcRadius;
-                    Vector3 p2 = shipPosition + Vector3.Normalize(new Vector3(dir2.X, 0, dir2.Z)) * arcRadius;
-
-                    DrawLine3D(p1, p2, new Color(0, 255, 255, 255)); // Cyan
-                }
+                DrawLine3D(p1, p2, new Color(0, 255, 255, 255)); // Cyan
             }
         }
-
     }
 
     private void DrawUI()
@@ -396,25 +416,38 @@ public class StarfieldScene
         // Draw slider background
         Raylib.DrawRectangle((int)sliderX, (int)sliderY, (int)sliderWidth, (int)sliderHeight, Color.DarkGray);
 
-        // Handle slider interaction
-        Vector2 mousePos = Raylib.GetMousePosition();
-        Rectangle sliderBounds = new(sliderX, sliderY, sliderWidth, sliderHeight);
+        // Draw current speed bar (from bottom to current speed position)
+        float currentSpeed = ship.Systems.Speed; // Get actual current speed (0-1)
+        float currentSpeedBarHeight = currentSpeed * sliderHeight;
+        Raylib.DrawRectangle(
+            (int)sliderX,
+            (int)(sliderY + sliderHeight - currentSpeedBarHeight),
+            (int)sliderWidth,
+            (int)currentSpeedBarHeight,
+            Color.Green
+        );
 
-        if (Raylib.CheckCollisionPointRec(mousePos, sliderBounds) && Raylib.IsMouseButtonDown(MouseButton.Left))
+        // Handle slider interaction
+        if (isMouseOverUI && Raylib.IsMouseButtonDown(MouseButton.Left))
         {
+            Vector2 mousePos = Raylib.GetMousePosition();
             // Calculate speed from mouse position (inverted because slider goes bottom to top)
             float relativeY = mousePos.Y - sliderY;
             shipTargetSpeed = 1.0f - (relativeY / sliderHeight);
             shipTargetSpeed = Math.Clamp(shipTargetSpeed, 0.0f, 1.0f);
         }
 
-        // Draw slider handle
+        // Draw target speed handle (white)
         float handleY = sliderY + (1.0f - shipTargetSpeed) * sliderHeight;
         float handleHeight = 10;
         Raylib.DrawRectangle((int)(sliderX - 2), (int)(handleY - handleHeight / 2), (int)(sliderWidth + 4), (int)handleHeight, Color.White);
 
-        // Display speed value
-        FontManager.DrawText($"Speed: {shipTargetSpeed:F2}", (int)(sliderX - 60), (int)(sliderY - 25), 12, Color.White);
+        // Display target speed value above slider
+        FontManager.DrawText($"Target: {shipTargetSpeed:F2}", (int)(sliderX - 60), (int)(sliderY - 40), 12, Color.White);
+
+        // Display current speed value below slider (normalized to units/sec using BaseShipSpeed)
+        float actualSpeed = currentSpeed * Ship.BaseShipSpeed;
+        FontManager.DrawText($"Speed: {actualSpeed:F2} u/s", (int)(sliderX - 80), (int)(sliderY + sliderHeight + 10), 12, Color.Green);
 
         // // Ship stats
         // Vector3 shipPos = ship.Transform.Position;
