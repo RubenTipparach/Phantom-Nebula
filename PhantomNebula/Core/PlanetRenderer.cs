@@ -67,21 +67,23 @@ public class PlanetRenderer
             return;
         }
 
-        // Set shader uniforms
-        // Set camera position uniform
-        int cameraPosLoc = GetShaderLocation(planetShader, "cameraPos");
-        SetShaderValue(planetShader, cameraPosLoc, camera.Position, ShaderUniformDataType.Vec3);
-
-        // Set time uniform
-        int timeLoc = GetShaderLocation(planetShader, "time");
+        // Get time once
         float timeValue = (float)GetTime();
-        SetShaderValue(planetShader, timeLoc, timeValue, ShaderUniformDataType.Float);
 
-        // Set sun position uniform
+        // Set shader uniforms before drawing
+        int cameraPosLoc = GetShaderLocation(planetShader, "cameraPos");
+        if (cameraPosLoc != -1)
+            SetShaderValue(planetShader, cameraPosLoc, camera.Position, ShaderUniformDataType.Vec3);
+
+        int timeLoc = GetShaderLocation(planetShader, "time");
+        if (timeLoc != -1)
+            SetShaderValue(planetShader, timeLoc, timeValue, ShaderUniformDataType.Float);
+
         int sunPosLoc = GetShaderLocation(planetShader, "sunPosition");
-        SetShaderValue(planetShader, sunPosLoc, new Vector3(100.0f, 50.0f, 0.0f), ShaderUniformDataType.Vec3);
+        if (sunPosLoc != -1)
+            SetShaderValue(planetShader, sunPosLoc, new Vector3(100.0f, 50.0f, 0.0f), ShaderUniformDataType.Vec3);
 
-        // Draw the planet
+        // Draw the planet with shader
         DrawModel(planetModel, position, 1.0f, Color.White);
     }
 

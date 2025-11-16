@@ -8,6 +8,7 @@ out vec4 finalColor;
 
 uniform float time;
 uniform vec3 sunPosition;
+uniform vec3 cameraPos;
 
 //=============================================================================
 // TWEAKABLE CONSTANTS

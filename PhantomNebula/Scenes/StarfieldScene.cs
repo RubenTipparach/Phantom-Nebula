@@ -18,6 +18,7 @@ public class StarfieldScene
     private Ship ship;
     private CameraController cameraController;
     private GifRecorder gifRecorder;
+    private RenderTexture2D sceneTexture;
 
     // Input state
     private float shipTargetSpeed = 0f;
@@ -44,6 +45,9 @@ public class StarfieldScene
 
         // Initialize GIF recorder
         gifRecorder = new GifRecorder();
+
+        // Create render texture for GIF capture (1280x720)
+        sceneTexture = Raylib.LoadRenderTexture(1280, 720);
 
         Console.WriteLine("[StarfieldScene] Initialized with Voronoi starfield shader, 1 planet, 1 ship");
     }
@@ -138,33 +142,43 @@ public class StarfieldScene
         // Get camera first
         var camera = cameraController.GetCamera();
 
-        // Clear background
-        Raylib.ClearBackground(Color.Black);
+        // Render to texture for GIF capture
+        Raylib.BeginTextureMode(sceneTexture);
+        {
+            // Clear background
+            Raylib.ClearBackground(Color.Black);
 
-        // 3D mode with camera controller
-        Raylib.BeginMode3D(camera);
+            // 3D mode with camera controller
+            Raylib.BeginMode3D(camera);
 
-        // Draw background starfield
-        background.Draw(camera);
+            // Draw background starfield
+            background.Draw(camera);
 
-        // Draw planet with procedural shader
-        planetRenderer.Draw(camera);
+            // Draw planet with procedural shader
+            planetRenderer.Draw(camera);
 
-        // Draw test mesh (red cube) - offset from planet
-        testMesh.Draw(new Vector3(3.0f, 0, 0));
+            // Draw test mesh (red cube) - offset from planet
+            // testMesh.Draw(new Vector3(3.0f, 0, 0));
 
-        // Draw ship as a simple cube
-        DrawShip();
+            // Draw ship as a simple cube
+            DrawShip();
 
-        Raylib.EndMode3D();
+            Raylib.EndMode3D();
 
-        // Draw UI
-        DrawUI();
+            // Draw UI
+            DrawUI();
+        }
+        Raylib.EndTextureMode();
 
-        // Capture frame for GIF recording after all drawing is done
+        // Draw texture to screen
+        Raylib.DrawTextureRec(sceneTexture.Texture,
+            new Rectangle(0, 0, sceneTexture.Texture.Width, -sceneTexture.Texture.Height),
+            Vector2.Zero, Color.White);
+
+        // Capture frame for GIF recording (from texture)
         if (gifRecorder.IsRecording)
         {
-            gifRecorder.CaptureFrame(Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
+            gifRecorder.CaptureFrameFromTexture(sceneTexture);
         }
     }
 
@@ -224,5 +238,6 @@ public class StarfieldScene
         planet.Dispose();
         ship.Dispose();
         gifRecorder.Dispose();
+        Raylib.UnloadRenderTexture(sceneTexture);
     }
 }

@@ -111,14 +111,16 @@ public class BackgroundRenderer
             return;
         }
 
-        // Disable backface culling for sphere rendering
+        // Disable backface culling and depth writing for background
         Rlgl.DisableBackfaceCulling();
+        Rlgl.DisableDepthMask();
 
         // Draw background sphere at camera position to wrap around it
         // Large scale so it surrounds everything
         DrawModel(model, camera.Position, 1000.0f, Color.White);
 
-        // Re-enable backface culling
+        // Re-enable backface culling and depth writing
+        Rlgl.EnableDepthMask();
         Rlgl.EnableBackfaceCulling();
     }
 
