@@ -31,6 +31,7 @@ public class StarfieldScene
 
     // Mouse raycast
     private Vector3? mouseWorldPosition = null;
+    private Vector3? lastClickPosition = null; // Track last right-click for debug visualization
 
     public StarfieldScene()
     {
@@ -141,37 +142,57 @@ public class StarfieldScene
             float rotationSpeed = 0.02f;
 
             if (Raylib.IsKeyDown(KeyboardKey.Left))
-        {
-            // Rotate around Y axis (left)
-            float angle = rotationSpeed;
-            float x = lightDirection.X * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
-            float z = lightDirection.X * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
-            lightDirection = Vector3.Normalize(new Vector3(x, lightDirection.Y, z));
+            {
+                // Rotate around Y axis (left)
+                float angle = rotationSpeed;
+                float x = lightDirection.X * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
+                float z = lightDirection.X * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
+                lightDirection = Vector3.Normalize(new Vector3(x, lightDirection.Y, z));
+            }
+            if (Raylib.IsKeyDown(KeyboardKey.Right))
+            {
+                // Rotate around Y axis (right)
+                float angle = -rotationSpeed;
+                float x = lightDirection.X * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
+                float z = lightDirection.X * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
+                lightDirection = Vector3.Normalize(new Vector3(x, lightDirection.Y, z));
+            }
+            if (Raylib.IsKeyDown(KeyboardKey.Up))
+            {
+                // Rotate around X axis (up)
+                float angle = rotationSpeed;
+                float y = lightDirection.Y * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
+                float z = lightDirection.Y * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
+                lightDirection = Vector3.Normalize(new Vector3(lightDirection.X, y, z));
+            }
+            if (Raylib.IsKeyDown(KeyboardKey.Down))
+            {
+                // Rotate around X axis (down)
+                float angle = -rotationSpeed;
+                float y = lightDirection.Y * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
+                float z = lightDirection.Y * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
+                lightDirection = Vector3.Normalize(new Vector3(lightDirection.X, y, z));
+            }
         }
-        if (Raylib.IsKeyDown(KeyboardKey.Right))
+
+        // Right-click to set ship heading towards clicked location
+        if (Raylib.IsMouseButtonPressed(MouseButton.Right) && mouseWorldPosition.HasValue)
         {
-            // Rotate around Y axis (right)
-            float angle = -rotationSpeed;
-            float x = lightDirection.X * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
-            float z = lightDirection.X * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
-            lightDirection = Vector3.Normalize(new Vector3(x, lightDirection.Y, z));
-        }
-        if (Raylib.IsKeyDown(KeyboardKey.Up))
-        {
-            // Rotate around X axis (up)
-            float angle = rotationSpeed;
-            float y = lightDirection.Y * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
-            float z = lightDirection.Y * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
-            lightDirection = Vector3.Normalize(new Vector3(lightDirection.X, y, z));
-        }
-        if (Raylib.IsKeyDown(KeyboardKey.Down))
-        {
-            // Rotate around X axis (down)
-            float angle = -rotationSpeed;
-            float y = lightDirection.Y * MathF.Cos(angle) - lightDirection.Z * MathF.Sin(angle);
-            float z = lightDirection.Y * MathF.Sin(angle) + lightDirection.Z * MathF.Cos(angle);
-            lightDirection = Vector3.Normalize(new Vector3(lightDirection.X, y, z));
-        }
+            Vector3 targetPosition = mouseWorldPosition.Value;
+            Vector3 shipPosition = ship.Transform.Position;
+
+            // Store click position for debug visualization
+            lastClickPosition = targetPosition;
+
+            // Calculate direction from ship to target
+            Vector3 direction = targetPosition - shipPosition;
+
+            // Convert to 2D heading (X, Z plane)
+            if (direction.Length() > 0.001f)
+            {
+                Vector2 heading2D = Vector2.Normalize(new Vector2(direction.X, direction.Z));
+                ship.SetTargetHeading(heading2D);
+            }
         }
 
         // A/D for ship rotation
@@ -244,6 +265,9 @@ public class StarfieldScene
                 DrawRedCross(mouseWorldPosition.Value);
             }
 
+            // Draw debug lines for ship rotation
+            DrawShipDebugLines();
+
             Raylib.EndMode3D();
 
             // Draw UI
@@ -282,6 +306,25 @@ public class StarfieldScene
             position + new Vector3(0, 0, crossSize),
             crossColor
         );
+    }
+
+    private void DrawShipDebugLines()
+    {
+        Vector3 shipPosition = ship.Transform.Position;
+
+        // Draw line from ship to last clicked position (yellow)
+        if (lastClickPosition.HasValue)
+        {
+            DrawLine3D(shipPosition, lastClickPosition.Value, Color.Yellow);
+        }
+
+        // Draw line for ship heading direction (green)
+        // Convert ship's 2D heading to 3D direction
+        Vector2 shipHeading = ship.Systems.Heading;
+        Vector3 headingDirection = new Vector3(shipHeading.X, 0, shipHeading.Y);
+        float lineLength = 5.0f;
+        Vector3 headingEndPoint = shipPosition + (headingDirection * lineLength);
+        DrawLine3D(shipPosition, headingEndPoint, Color.Green);
     }
 
     private void DrawUI()

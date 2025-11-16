@@ -18,6 +18,7 @@ public class ShipSystems
 
     public Vector3 Position { get; set; } = Vector3.Zero;
     public Vector2 Heading { get; set; } = Vector2.UnitY;  // Default heading towards +Z
+    public Vector2 TargetHeading { get; set; } = Vector2.UnitY;
     public float Speed { get; set; } = 0f;
     public float MaxSpeed { get; set; } = 10f;
 
@@ -106,45 +107,45 @@ public class ShipSystems
     /// <returns>New heading direction after rotation step</returns>
     public Vector2 CalculateRotation(Vector2 currentHeadingDir, Vector2 targetHeadingDir, float turnRate)
     {
-        float currentAngle = Atan2(currentHeadingDir.X, currentHeadingDir.Y);
-        float targetAngle = Atan2(targetHeadingDir.X, targetHeadingDir.Y);
+        // Normalize both vectors to ensure unit length
+        currentHeadingDir = Vector2.Normalize(currentHeadingDir);
+        targetHeadingDir = Vector2.Normalize(targetHeadingDir);
 
-        // Calculate shortest angular difference (wraps around 0/1 boundary)
-        float angleDiff = targetAngle - currentAngle;
-        if (angleDiff > 0.5f)
+        // Rotate current heading by 90 degrees to get perpendicular (left) vector
+        // If heading is (x, y), perpendicular left is (-y, x)
+        Vector2 perpendicular = new Vector2(-currentHeadingDir.Y, currentHeadingDir.X);
+
+        // Dot product of target with perpendicular determines rotation direction
+        // Positive = target is to the left, rotate left
+        // Negative = target is to the right, rotate right
+        float dotWithPerpendicular = Vector2.Dot(targetHeadingDir, perpendicular);
+
+        // If already aligned, return current heading
+        if (Math.Abs(dotWithPerpendicular) < 0.001f)
         {
-            angleDiff -= 1f;
-        }
-        else if (angleDiff < -0.5f)
-        {
-            angleDiff += 1f;
-        }
-
-        // Only rotate if not already at target (tolerance: 0.001 turns)
-        if (Math.Abs(angleDiff) > 0.001f)
-        {
-            // Determine direction: positive or negative
-            float rotationAmount = angleDiff > 0 ? turnRate : -turnRate;
-
-            // Apply rotation to current angle
-            float newAngle = currentAngle + rotationAmount;
-
-            // Convert back to direction vector
-            float newX = (float)Math.Cos(newAngle * 2f * PI);
-            float newZ = (float)Math.Sin(newAngle * 2f * PI);
-
-            // Normalize to ensure unit vector (handle floating point drift)
-            float len = (float)Math.Sqrt(newX * newX + newZ * newZ);
-            if (len > 0.0001f)
-            {
-                newX /= len;
-                newZ /= len;
-            }
-
-            return new Vector2(newX, newZ);
+            return currentHeadingDir;
         }
 
-        return currentHeadingDir;
+        // Determine rotation direction based on which side target is on
+        float rotationDirection = dotWithPerpendicular > 0 ? 1f : -1f;
+
+        // Convert turn rate (in turns/rotations) to radians
+        float rotationAngle = rotationDirection * turnRate * 2f * PI;
+
+        Console.WriteLine($"[CalculateRotation] Current: ({currentHeadingDir.X:F3}, {currentHeadingDir.Y:F3}), Target: ({targetHeadingDir.X:F3}, {targetHeadingDir.Y:F3}), TurnRate: {turnRate:F6}, RotationDir: {rotationDirection}, RotationAngle: {rotationAngle:F6} rad");
+
+        // Apply rotation using rotation matrix
+        // [cos(θ)  -sin(θ)] [x]
+        // [sin(θ)   cos(θ)] [y]
+        float cosRot = MathF.Cos(rotationAngle);
+        float sinRot = MathF.Sin(rotationAngle);
+
+        float newX = currentHeadingDir.X * cosRot - currentHeadingDir.Y * sinRot;
+        float newY = currentHeadingDir.X * sinRot + currentHeadingDir.Y * cosRot;
+
+        Console.WriteLine($"[CalculateRotation] Result: ({newX:F3}, {newY:F3})");
+
+        return new Vector2(newX, newY);
     }
 
     // ============================================
@@ -182,21 +183,4 @@ public class ShipSystems
         );
     }
 
-    // ============================================
-    // HELPER FUNCTIONS
-    // ============================================
-
-    /// <summary>
-    /// Atan2 implementation that returns angle in turns (0-1 range)
-    /// 0 = +Z axis, 0.25 = +X axis, 0.5 = -Z axis, 0.75 = -X axis
-    /// </summary>
-    private float Atan2(float x, float z)
-    {
-        float angle = (float)Math.Atan2(x, z) / (2f * PI);
-        if (angle < 0)
-        {
-            angle += 1f;
-        }
-        return angle;
-    }
 }
