@@ -1,15 +1,17 @@
 using System;
 using System.Numerics;
 using PhantomNebula.Utils;
+using PhantomNebula.Core;
+using PhantomNebula.Renderers;
 using Raylib_cs;
 
-namespace PhantomNebula.Core;
+namespace PhantomNebula.Game;
 
 /// <summary>
 /// Ship entity with simplified kinematic movement
 /// Extends Transform for transform-based positioning
 /// </summary>
-public class Ship : Transform, IDisposable
+public class Ship : Core.Transform, IDisposable
 {
     // Ship systems
     public ShipSystems Systems { get; private set; } = new();
@@ -21,8 +23,8 @@ public class Ship : Transform, IDisposable
     private float targetSpeed = 0f;
     private float currentSpeed = 0f;
     private const float SpeedSmoothing = 0.08f;
-    private const float TurnRate = 0.2f;
-    private const float MaxRollAngle = 0.5f; // Maximum roll in radians (~28 degrees)
+    private const float TurnRate = 0.4f;
+    private const float MaxRollAngle = 0.2f; // Maximum roll in radians (~28 degrees)
     private const float RollSpeed = 0.1f; // How fast roll interpolates
 
     // Track yaw and roll separately
@@ -51,8 +53,24 @@ public class Ship : Transform, IDisposable
         // Get current heading from forward vector projected onto XZ plane
         Vector2 currentHeading = Vector2.Normalize(new Vector2(Forward.X, Forward.Z));
 
+        // Calculate angle to target
+        float dotProduct = Vector2.Dot(currentHeading, Systems.TargetHeading);
+        float angleToTarget = MathF.Acos(Math.Clamp(dotProduct, -1f, 1f));
+
         // Update heading with smooth rotation
         var rotationAngleY = Systems.CalculateRotation(currentHeading, Systems.TargetHeading, TurnRate * deltaTime);
+
+        // Prevent overshooting - clamp rotation if we're close to target
+        const float stopThreshold = 0.01f; // ~0.57 degrees
+        if (angleToTarget < stopThreshold)
+        {
+            rotationAngleY = 0f; // Stop rotating
+        }
+        else if (MathF.Abs(rotationAngleY) > angleToTarget)
+        {
+            // About to overshoot - clamp to exact angle remaining
+            rotationAngleY = angleToTarget * MathF.Sign(rotationAngleY);
+        }
 
         // Update speed with smooth interpolation
         currentSpeed = Systems.CalculateSpeed(currentSpeed, targetSpeed, SpeedSmoothing);

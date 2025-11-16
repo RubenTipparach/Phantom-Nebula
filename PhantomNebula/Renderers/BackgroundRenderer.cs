@@ -4,7 +4,7 @@ using System.Numerics;
 using Raylib_cs;
 using static Raylib_cs.Raylib;
 
-namespace PhantomNebula.Core;
+namespace PhantomNebula.Renderers;
 
 /// <summary>
 /// Background renderer - renders Voronoi starfield using a full-screen quad

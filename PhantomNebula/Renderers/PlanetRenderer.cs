@@ -3,7 +3,7 @@ using System.Numerics;
 using Raylib_cs;
 using static Raylib_cs.Raylib;
 
-namespace PhantomNebula.Core;
+namespace PhantomNebula.Renderers;
 
 /// <summary>
 /// Planet renderer - renders a procedural planet with clouds, atmosphere, and terrain

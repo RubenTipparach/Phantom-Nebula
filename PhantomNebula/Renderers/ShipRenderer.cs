@@ -1,9 +1,10 @@
 using System;
 using System.Numerics;
+using PhantomNebula.Core;
 using Raylib_cs;
 using static Raylib_cs.Raylib;
 
-namespace PhantomNebula.Core;
+namespace PhantomNebula.Renderers;
 
 /// <summary>
 /// Ship renderer - loads and renders the shippy model with PBR-like lighting
@@ -79,7 +80,7 @@ public class ShipRenderer
         }
     }
 
-    public void Draw(Transform transform, Camera3D camera, Vector3 lightDirection)
+    public void Draw(Core.Transform transform, Camera3D camera, Vector3 lightDirection)
     {
         if (shipModel.MaterialCount == 0)
             return;

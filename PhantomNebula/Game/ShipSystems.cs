@@ -1,7 +1,7 @@
 using System;
 using System.Numerics;
 
-namespace PhantomNebula.Core;
+namespace PhantomNebula.Game;
 
 /// <summary>
 /// Ship Systems Module

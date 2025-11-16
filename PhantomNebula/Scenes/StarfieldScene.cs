@@ -2,6 +2,8 @@ using System;
 using System.Numerics;
 using Raylib_cs;
 using PhantomNebula.Core;
+using PhantomNebula.Game;
+using PhantomNebula.Renderers;
 using static Raylib_cs.Raylib;
 
 namespace PhantomNebula.Scenes;
@@ -13,7 +15,6 @@ namespace PhantomNebula.Scenes;
 public class StarfieldScene
 {
     private BackgroundRenderer background;
-    private TestMesh testMesh;
     private PlanetRenderer planetRenderer;
     private Ship ship;
     private CameraController cameraController;
@@ -46,9 +47,6 @@ public class StarfieldScene
 
         // Initialize background renderer with starfield shader
         background = new BackgroundRenderer();
-
-        // Initialize test mesh (red cube)
-        testMesh = new TestMesh();
 
         // Create planet renderer with transform from config
         Vector3 planetPosition = new Vector3(config.PlanetPositionX, config.PlanetPositionY, config.PlanetPositionZ);
@@ -250,9 +248,6 @@ public class StarfieldScene
             // Draw planet with procedural shader
             planetRenderer.Draw(camera, lightDirection);
 
-            // Draw test mesh (red cube) - offset from planet
-            // testMesh.Draw(new Vector3(3.0f, 0, 0));
-
             // Draw ship with model and shader
             ship.Draw(camera, lightDirection);
 
@@ -266,9 +261,6 @@ public class StarfieldScene
             DrawShipDebugLines();
 
             Raylib.EndMode3D();
-
-            // Draw UI
-            DrawUI();
         }
         Raylib.EndTextureMode();
 
@@ -276,6 +268,9 @@ public class StarfieldScene
         Raylib.DrawTextureRec(sceneTexture.Texture,
             new Rectangle(0, 0, sceneTexture.Texture.Width, -sceneTexture.Texture.Height),
             Vector2.Zero, Color.White);
+
+        // Draw UI on top of the rendered scene
+        DrawUI();
 
         // Capture frame for GIF recording (from texture)
         if (gifRecorder.IsRecording)
@@ -332,8 +327,8 @@ public class StarfieldScene
             if (angle > 0.01f) // Only draw if there's a meaningful angle
             {
                 // Draw arc with multiple line segments
-                int arcSegments = 20;
-                float arcRadius = lineLength * 0.7f; // Slightly shorter than the direction lines
+                int arcSegments = 16;
+                float arcRadius = 1.2f; // Slightly shorter than the direction lines
 
                 for (int i = 0; i < arcSegments; i++)
                 {
@@ -411,7 +406,6 @@ public class StarfieldScene
     public void Dispose()
     {
         background.Dispose();
-        testMesh.Dispose();
         planetRenderer.Dispose();
         ship.Dispose();
         gifRecorder.Dispose();
