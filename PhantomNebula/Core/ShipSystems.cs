@@ -105,7 +105,7 @@ public class ShipSystems
     /// <param name="targetHeadingDir">Target direction vector (unit vector)</param>
     /// <param name="turnRate">Turn rate in turns (e.g., 0.01 for 1% rotation per frame)</param>
     /// <returns>New heading direction after rotation step</returns>
-    public Vector2 CalculateRotation(Vector2 currentHeadingDir, Vector2 targetHeadingDir, float turnRate)
+    public float CalculateRotation(Vector2 currentHeadingDir, Vector2 targetHeadingDir, float turnRate)
     {
         // Normalize both vectors to ensure unit length
         currentHeadingDir = Vector2.Normalize(currentHeadingDir);
@@ -123,29 +123,16 @@ public class ShipSystems
         // If already aligned, return current heading
         if (Math.Abs(dotWithPerpendicular) < 0.001f)
         {
-            return currentHeadingDir;
+            return 0;
         }
 
         // Determine rotation direction based on which side target is on
-        float rotationDirection = dotWithPerpendicular > 0 ? 1f : -1f;
+        float rotationDirection = dotWithPerpendicular > 0 ? -1f : 1f;
 
         // Convert turn rate (in turns/rotations) to radians
-        float rotationAngle = rotationDirection * turnRate * 2f * PI;
+        float rotationAngle = rotationDirection * turnRate;
 
-        Console.WriteLine($"[CalculateRotation] Current: ({currentHeadingDir.X:F3}, {currentHeadingDir.Y:F3}), Target: ({targetHeadingDir.X:F3}, {targetHeadingDir.Y:F3}), TurnRate: {turnRate:F6}, RotationDir: {rotationDirection}, RotationAngle: {rotationAngle:F6} rad");
-
-        // Apply rotation using rotation matrix
-        // [cos(θ)  -sin(θ)] [x]
-        // [sin(θ)   cos(θ)] [y]
-        float cosRot = MathF.Cos(rotationAngle);
-        float sinRot = MathF.Sin(rotationAngle);
-
-        float newX = currentHeadingDir.X * cosRot - currentHeadingDir.Y * sinRot;
-        float newY = currentHeadingDir.X * sinRot + currentHeadingDir.Y * cosRot;
-
-        Console.WriteLine($"[CalculateRotation] Result: ({newX:F3}, {newY:F3})");
-
-        return new Vector2(newX, newY);
+        return rotationAngle;
     }
 
     // ============================================

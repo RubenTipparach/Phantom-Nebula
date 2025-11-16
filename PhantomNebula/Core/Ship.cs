@@ -1,14 +1,15 @@
 using System;
 using System.Numerics;
 using PhantomNebula.Utils;
+using Raylib_cs;
 
 namespace PhantomNebula.Core;
 
 /// <summary>
 /// Ship entity with simplified kinematic movement
-/// Inherits from Entity for transform-based positioning
+/// Extends Transform for transform-based positioning
 /// </summary>
-public class Ship : Entity
+public class Ship : Transform, IDisposable
 {
     // Ship systems
     public ShipSystems Systems { get; private set; } = new();
@@ -17,48 +18,83 @@ public class Ship : Entity
     // Ship renderer
     public ShipRenderer Renderer { get; private set; }
 
-
     private float targetSpeed = 0f;
     private float currentSpeed = 0f;
     private const float SpeedSmoothing = 0.08f;
-    private const float TurnRate = 0.0002f;
+    private const float TurnRate = 0.2f;
+    private const float MaxRollAngle = 0.5f; // Maximum roll in radians (~28 degrees)
+    private const float RollSpeed = 0.1f; // How fast roll interpolates
 
-    public Ship(Vector3 initialPosition, float scale = 1.0f) : base(initialPosition, new Vector3(scale, scale, scale), "Ship")
+    // Track yaw and roll separately
+    private Quaternion yawRotation = Quaternion.Identity; // Yaw-only rotation around world Y-axis
+    private float currentRoll = 0f; // Current roll angle
+
+    public Ship(Vector3 initialPosition, float scale = 1.0f)
     {
+        Position = initialPosition;
+        Scale = new Vector3(scale, scale, scale);
+
         Health.Init();
-        Systems.Position = Transform.Position;
-        Systems.Heading = new Vector2(Transform.Forward.X, Transform.Forward.Z);
+        Systems.Position = Position;
+        Systems.Heading = new Vector2(Forward.X, Forward.Z);
         Systems.Speed = currentSpeed;
 
         // Initialize renderer
-        Renderer = new ShipRenderer(Transform.Position, scale);
+        Renderer = new ShipRenderer();
     }
 
     /// <summary>
     /// Update ship state (input, movement)
     /// </summary>
-    public override void Update(float deltaTime)
+    public void Update(float deltaTime)
     {
+        // Get current heading from forward vector projected onto XZ plane
+        Vector2 currentHeading = Vector2.Normalize(new Vector2(Forward.X, Forward.Z));
+
         // Update heading with smooth rotation
-        var offsetHeading = Systems.CalculateRotation(Systems.Heading, Systems.TargetHeading, TurnRate);
+        var rotationAngleY = Systems.CalculateRotation(currentHeading, Systems.TargetHeading, TurnRate * deltaTime);
 
         // Update speed with smooth interpolation
         currentSpeed = Systems.CalculateSpeed(currentSpeed, targetSpeed, SpeedSmoothing);
 
-        // Update systems state
-        Systems.Position = Transform.Position;
+        // Calculate target roll based on rotation direction
+        // Positive rotationAngle = turning right, negative = turning left
+        // Roll is opposite: right turn = negative roll (bank right), left turn = positive roll (bank left)
+        float targetRoll = 0f;
+        if (MathF.Abs(rotationAngleY) > 0.001f)
+        {
+            // Turning - apply roll in opposite direction of rotation
+            targetRoll = -MathF.Sign(rotationAngleY) * MaxRollAngle;
+        }
+
+        // Smoothly interpolate current roll towards target roll
+        currentRoll += (targetRoll - currentRoll) * RollSpeed;
+
+        // Apply yaw rotation around WORLD Y-axis (always global up)
+        Quaternion yawDelta = Quaternion.CreateFromAxisAngle(Vector3.UnitY, rotationAngleY);
+        yawRotation = yawDelta * yawRotation;
+
+        // Combine yaw rotation with roll around forward axis
+        // First apply yaw, then roll around the resulting forward direction
+        Vector3 forwardDir = Vector3.Transform(Vector3.UnitZ, yawRotation);
+        Quaternion rollRotation = Quaternion.CreateFromAxisAngle(forwardDir, currentRoll);
+        Rotation = rollRotation * yawRotation;
+
+        // Update systems state at end with current transform values (AFTER rotation applied)
+        Systems.Position = Position;
         Systems.Speed = currentSpeed;
-        // Note: Don't overwrite Systems.Heading here - it holds the target heading that CalculateRotation uses!
+        Systems.Heading = Vector2.Normalize(new Vector2(Forward.X, Forward.Z));
 
-        // Update renderer position and rotation
-        Renderer.UpdatePosition(Transform.Position);
+        // Debug output
+        //Console.WriteLine($"[Ship] Rotation: ({Rotation.X:F3}, {Rotation.Y:F3}, {Rotation.Z:F3}) | Forward: ({Forward.X:F3}, {Forward.Y:F3}, {Forward.Z:F3}) | Heading: ({Systems.Heading.X:F3}, {Systems.Heading.Y:F3})");
+    }
 
-        // Convert 2D heading vector to rotation angle (around Y axis)
-        float rotationAngle = MathF.Atan2(offsetHeading.X, offsetHeading.Y);
-        Renderer.UpdateRotation(rotationAngle);
-
-        // Call base update for children
-        base.Update(deltaTime);
+    /// <summary>
+    /// Draw ship using renderer
+    /// </summary>
+    public void Draw(Camera3D camera, Vector3 lightDirection)
+    {
+        Renderer.Draw(this, camera, lightDirection);
     }
 
     /// <summary>
@@ -86,7 +122,7 @@ public class Ship : Entity
     /// </summary>
     public bool IsTargetInRange(Vector3 targetPosition, float range)
     {
-        return Systems.IsInRange(Transform.Position, targetPosition, range);
+        return Systems.IsInRange(Position, targetPosition, range);
     }
 
     /// <summary>
@@ -94,7 +130,15 @@ public class Ship : Entity
     /// </summary>
     public bool IsTargetInArc(Vector3 targetPosition, float arcStart, float arcEnd)
     {
-        return Systems.IsInFiringArc(Transform.Position, Systems.Heading, targetPosition, arcStart, arcEnd);
+        return Systems.IsInFiringArc(Position, Systems.Heading, targetPosition, arcStart, arcEnd);
+    }
+
+    /// <summary>
+    /// Dispose ship resources
+    /// </summary>
+    public void Dispose()
+    {
+        Renderer.Dispose();
     }
 
     /// <summary>

@@ -14,7 +14,6 @@ public class StarfieldScene
 {
     private BackgroundRenderer background;
     private TestMesh testMesh;
-    private Entity planet;
     private PlanetRenderer planetRenderer;
     private Ship ship;
     private CameraController cameraController;
@@ -51,13 +50,9 @@ public class StarfieldScene
         // Initialize test mesh (red cube)
         testMesh = new TestMesh();
 
-        // Create planet entity with transform from config
-        planet = new Entity(
-            new Vector3(config.PlanetPositionX, config.PlanetPositionY, config.PlanetPositionZ),
-            new Vector3(config.PlanetScale, config.PlanetScale, config.PlanetScale),
-            "Planet"
-        );
-        planetRenderer = new PlanetRenderer(planet.Transform.Position, 50.0f, 32);
+        // Create planet renderer with transform from config
+        Vector3 planetPosition = new Vector3(config.PlanetPositionX, config.PlanetPositionY, config.PlanetPositionZ);
+        planetRenderer = new PlanetRenderer(planetPosition, 50.0f, 32);
 
         // Create ship from config (includes renderer)
         ship = new Ship(
@@ -66,7 +61,7 @@ public class StarfieldScene
         );
 
         // Create camera controller orbiting the ship (not the planet)
-        cameraController = new CameraController(ship.Transform);
+        cameraController = new CameraController(ship);
 
         // Initialize GIF recorder
         gifRecorder = new GifRecorder();
@@ -83,8 +78,7 @@ public class StarfieldScene
         HandleInput();
         UpdateMouseRaycast();
 
-        // Update entities
-        planet.Update(deltaTime);
+        // Update ship
         ship.Update(deltaTime);
 
         // Update camera controller
@@ -179,7 +173,7 @@ public class StarfieldScene
         if (Raylib.IsMouseButtonPressed(MouseButton.Right) && mouseWorldPosition.HasValue)
         {
             Vector3 targetPosition = mouseWorldPosition.Value;
-            Vector3 shipPosition = ship.Transform.Position;
+            Vector3 shipPosition = ship.Position;
 
             // Store click position for debug visualization
             lastClickPosition = targetPosition;
@@ -260,7 +254,7 @@ public class StarfieldScene
             // testMesh.Draw(new Vector3(3.0f, 0, 0));
 
             // Draw ship with model and shader
-            ship.Renderer.Draw(camera, lightDirection);
+            ship.Draw(camera, lightDirection);
 
             // Draw red cross at mouse raycast intersection
             if (mouseWorldPosition.HasValue)
@@ -313,21 +307,62 @@ public class StarfieldScene
 
     private void DrawShipDebugLines()
     {
-        Vector3 shipPosition = ship.Transform.Position;
+        Vector3 shipPosition = ship.Position;
+
+
+        // Draw line for ship heading direction (green)
+        // Convert ship's 2D heading to 3D direction and normalize
+        Vector2 shipHeading = ship.Systems.Heading;
+        Vector3 headingDirection = Vector3.Normalize(new Vector3(shipHeading.X, 0, shipHeading.Y));
+        float lineLength = 1.5f;
+        Vector3 headingEndPoint = shipPosition + (headingDirection * lineLength);
+        DrawLine3D(shipPosition, headingEndPoint, Color.Green);
 
         // Draw line from ship to last clicked position (yellow)
         if (lastClickPosition.HasValue)
         {
-            DrawLine3D(shipPosition, lastClickPosition.Value, Color.Yellow);
+            Vector3 targetDirection = Vector3.Normalize(lastClickPosition.Value - shipPosition);
+            Vector3 targetEndPoint = shipPosition + (targetDirection * lineLength);
+            DrawLine3D(shipPosition, targetEndPoint, Color.Yellow);
+
+            // Draw arc between heading and target if there's an angle between them
+            float dotProduct = Vector3.Dot(headingDirection, targetDirection);
+            float angle = MathF.Acos(Math.Clamp(dotProduct, -1f, 1f));
+
+            if (angle > 0.01f) // Only draw if there's a meaningful angle
+            {
+                // Draw arc with multiple line segments
+                int arcSegments = 20;
+                float arcRadius = lineLength * 0.7f; // Slightly shorter than the direction lines
+
+                for (int i = 0; i < arcSegments; i++)
+                {
+                    float t1 = (float)i / arcSegments;
+                    float t2 = (float)(i + 1) / arcSegments;
+
+                    // Slerp between heading and target direction
+                    Quaternion q1 = Quaternion.Slerp(
+                        Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(headingDirection.X, headingDirection.Z)),
+                        Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(targetDirection.X, targetDirection.Z)),
+                        t1
+                    );
+                    Quaternion q2 = Quaternion.Slerp(
+                        Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(headingDirection.X, headingDirection.Z)),
+                        Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.Atan2(targetDirection.X, targetDirection.Z)),
+                        t2
+                    );
+
+                    Vector3 dir1 = Vector3.Transform(Vector3.UnitZ, q1);
+                    Vector3 dir2 = Vector3.Transform(Vector3.UnitZ, q2);
+
+                    Vector3 p1 = shipPosition + Vector3.Normalize(new Vector3(dir1.X, 0, dir1.Z)) * arcRadius;
+                    Vector3 p2 = shipPosition + Vector3.Normalize(new Vector3(dir2.X, 0, dir2.Z)) * arcRadius;
+
+                    DrawLine3D(p1, p2, new Color(0, 255, 255, 255)); // Cyan
+                }
+            }
         }
 
-        // Draw line for ship heading direction (green)
-        // Convert ship's 2D heading to 3D direction
-        Vector2 shipHeading = ship.Systems.Heading;
-        Vector3 headingDirection = new Vector3(shipHeading.X, 0, shipHeading.Y);
-        float lineLength = 5.0f;
-        Vector3 headingEndPoint = shipPosition + (headingDirection * lineLength);
-        DrawLine3D(shipPosition, headingEndPoint, Color.Green);
     }
 
     private void DrawUI()
@@ -378,7 +413,6 @@ public class StarfieldScene
         background.Dispose();
         testMesh.Dispose();
         planetRenderer.Dispose();
-        planet.Dispose();
         ship.Dispose();
         gifRecorder.Dispose();
         Raylib.UnloadRenderTexture(sceneTexture);

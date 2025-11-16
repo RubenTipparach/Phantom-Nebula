@@ -8,6 +8,7 @@ namespace PhantomNebula.Core;
 /// <summary>
 /// Ship renderer - loads and renders the shippy model with PBR-like lighting
 /// Uses directional light source consistent with planet lighting
+/// Requires a Transform to draw
 /// </summary>
 public class ShipRenderer
 {
@@ -16,14 +17,9 @@ public class ShipRenderer
     private Texture2D shipEmissiveTexture;
     private Shader shipShader;
     private bool shaderLoaded = false;
-    private Vector3 position;
-    private float scale;
-    private float rotationAngle = 0f; // Rotation in radians around Y axis
 
-    public ShipRenderer(Vector3 shipPosition, float shipScale = 1.0f)
+    public ShipRenderer()
     {
-        position = shipPosition;
-        scale = shipScale;
 
         try
         {
@@ -31,7 +27,7 @@ public class ShipRenderer
             shipTexture = LoadTexture("Resources/Models/shippy.png");
             shipEmissiveTexture = LoadTexture("Resources/Models/shippy_em.png");
 
-            // Load the ship model
+            // Load the ship model (already has smooth normals from OBJ)
             shipModel = LoadModel("Resources/Models/shippy1.obj");
 
             Console.WriteLine("[ShipRenderer] Loaded shippy model successfully");
@@ -83,17 +79,7 @@ public class ShipRenderer
         }
     }
 
-    public void UpdatePosition(Vector3 newPosition)
-    {
-        position = newPosition;
-    }
-
-    public void UpdateRotation(float angleRadians)
-    {
-        rotationAngle = angleRadians;
-    }
-
-    public void Draw(Camera3D camera, Vector3 lightDirection)
+    public void Draw(Transform transform, Camera3D camera, Vector3 lightDirection)
     {
         if (shipModel.MaterialCount == 0)
             return;
@@ -118,12 +104,12 @@ public class ShipRenderer
                 SetShaderValue(shipShader, timeLoc, timeValue, ShaderUniformDataType.Float);
         }
 
-        // Draw the ship model with rotation around Y axis
-        // Convert radians to degrees for DrawModelEx
-        Vector3 rotationAxis = Vector3.UnitY;
-        float rotationDegrees = rotationAngle * 180f / MathF.PI;
+        // Draw the ship model using Transform values
+        // Convert quaternion rotation to matrix
+        Quaternion quat = transform.QuatRotation;
+        shipModel.Transform = Raylib_cs.Raymath.QuaternionToMatrix(quat);
 
-        DrawModelEx(shipModel, position, rotationAxis, rotationDegrees, new Vector3(scale, scale, scale), Color.White);
+        DrawModel(shipModel, transform.Position, transform.Scale.X, Color.White);
     }
 
     public void Dispose()

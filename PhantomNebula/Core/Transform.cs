@@ -13,9 +13,8 @@ public interface ITransform
     Vector3 Position { get; set; }
     Vector3 LocalPosition { get; set; }
 
-    // Rotation (in radians)
-    Vector3 Rotation { get; set; }
-    Quaternion QuatRotation { get; }
+    // Rotation (quaternion is ground truth)
+    Quaternion Rotation { get; set; }
 
     // Scale
     Vector3 Scale { get; set; }
@@ -35,13 +34,13 @@ public interface ITransform
 }
 
 /// <summary>
-/// Default implementation of ITransform
+/// Abstract transform base class implementing ITransform
 /// </summary>
-public class Transform : ITransform
+public abstract class Transform : ITransform
 {
     private Vector3 position = Vector3.Zero;
     private Vector3 localPosition = Vector3.Zero;
-    private Vector3 rotation = Vector3.Zero; // Euler angles in radians (pitch, yaw, roll)
+    private Quaternion rotation = Quaternion.Identity; // Quaternion is ground truth
     private Vector3 scale = Vector3.One;
     private ITransform? parent;
 
@@ -57,15 +56,17 @@ public class Transform : ITransform
         set => localPosition = value;
     }
 
-    public Vector3 Rotation
+    public Quaternion Rotation
     {
         get => rotation;
         set => rotation = value;
     }
 
+
     public Quaternion QuatRotation
     {
-        get => QuaternionFromEuler(rotation);
+        get => rotation;
+        set => rotation = value;
     }
 
     public Vector3 Scale
@@ -152,23 +153,11 @@ public class Transform : ITransform
 
     /// <summary>
     /// Convert Euler angles (pitch, yaw, roll) to Quaternion
-    /// Order: Z (roll), X (pitch), Y (yaw)
+    /// Uses Raylib's QuaternionFromEuler
     /// </summary>
     private Quaternion QuaternionFromEuler(Vector3 euler)
     {
-        float cy = (float)Math.Cos(euler.Y * 0.5f);
-        float sy = (float)Math.Sin(euler.Y * 0.5f);
-        float cp = (float)Math.Cos(euler.X * 0.5f);
-        float sp = (float)Math.Sin(euler.X * 0.5f);
-        float cr = (float)Math.Cos(euler.Z * 0.5f);
-        float sr = (float)Math.Sin(euler.Z * 0.5f);
-
-        return new Quaternion(
-            sp * cy * cr - cp * sy * sr,
-            cp * sy * cr + sp * cy * sr,
-            cp * cy * sr - sp * sy * cr,
-            cp * cy * cr + sp * sy * sr
-        );
+        return Raylib_cs.Raymath.QuaternionFromEuler(euler.X, euler.Y, euler.Z);
     }
 
     /// <summary>
@@ -196,7 +185,7 @@ public class Transform : ITransform
         lookMatrix.M33 = direction.Z;
 
         var quat = QuaternionFromMatrix(lookMatrix);
-        rotation = EulerFromQuaternion(quat);
+        rotation = quat;
     }
 
     /// <summary>
@@ -209,18 +198,10 @@ public class Transform : ITransform
 
     /// <summary>
     /// Convert Quaternion to Euler angles
+    /// Uses Raylib's QuaternionToEuler
     /// </summary>
     private Vector3 EulerFromQuaternion(Quaternion q)
     {
-        var sqx = q.X * q.X;
-        var sqy = q.Y * q.Y;
-        var sqz = q.Z * q.Z;
-        var sqw = q.W * q.W;
-
-        var pitch = (float)Math.Atan2(2f * (q.W * q.X + q.Y * q.Z), 1f - 2f * (sqx + sqy));
-        var yaw = (float)Math.Asin(2f * (q.W * q.Y - q.Z * q.X));
-        var roll = (float)Math.Atan2(2f * (q.W * q.Z + q.X * q.Y), 1f - 2f * (sqy + sqz));
-
-        return new Vector3(pitch, yaw, roll);
+        return Raylib_cs.Raymath.QuaternionToEuler(q);
     }
 }
