@@ -52,10 +52,14 @@ public class ShipRenderer
                         if (shipShader.Id != 0)
                         {
                             shaderLoaded = true;
-                            // Apply shader to all materials
+                            // Apply shader and textures to all materials
                             for (int i = 0; i < shipModel.MaterialCount; i++)
                             {
                                 shipModel.Materials[i].Shader = shipShader;
+                                // Set texture slots for the shader
+                                // texture0 = albedo/diffuse, texture1 = emissive
+                                shipModel.Materials[i].Maps[(int)MaterialMapIndex.Albedo].Texture = shipTexture;
+                                shipModel.Materials[i].Maps[(int)MaterialMapIndex.Emission].Texture = shipEmissiveTexture;
                             }
                             Console.WriteLine("[ShipRenderer] Loaded ship shader successfully");
                         }
