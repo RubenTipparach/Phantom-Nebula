@@ -43,6 +43,9 @@ public class CameraController
             FovY = 60.0f,
             Projection = CameraProjection.Perspective
         };
+
+        // Apply default near/far plane values
+        SetProjectionMatrix(Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
     }
 
     /// <summary>

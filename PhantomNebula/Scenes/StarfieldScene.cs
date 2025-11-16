@@ -223,6 +223,9 @@ public class StarfieldScene
             // Clear background
             Raylib.ClearBackground(Color.Black);
 
+            // Set custom projection matrix with far plane
+            cameraController.SetProjectionMatrix(Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
+
             // 3D mode with camera controller
             Raylib.BeginMode3D(camera);
 
