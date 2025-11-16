@@ -1,4 +1,5 @@
 using Raylib_cs;
+using PhantomNebula.Core;
 using PhantomNebula.Scenes;
 
 namespace PhantomNebula;
@@ -13,6 +14,9 @@ class Program
 
         Raylib.InitWindow(screenWidth, screenHeight, "Phantom Nebula - Starfield Scene");
         Raylib.SetTargetFPS(60);
+
+        // Initialize font manager
+        FontManager.Initialize();
 
         // Initialize scene
         var scene = new StarfieldScene();
@@ -30,6 +34,7 @@ class Program
         }
 
         scene.Dispose();
+        FontManager.Unload();
         Raylib.CloseWindow();
     }
 }

@@ -16,6 +16,7 @@ public class StarfieldScene
 {
     private BackgroundRenderer background;
     private PlanetRenderer planetRenderer;
+    private SpaceDustRenderer spaceDust;
     private Ship ship;
     private CameraController cameraController;
     private GifRecorder gifRecorder;
@@ -51,6 +52,9 @@ public class StarfieldScene
         // Create planet renderer with transform from config
         Vector3 planetPosition = new Vector3(config.PlanetPositionX, config.PlanetPositionY, config.PlanetPositionZ);
         planetRenderer = new PlanetRenderer(planetPosition, 50.0f, 32);
+
+        // Initialize space dust renderer
+        spaceDust = new SpaceDustRenderer();
 
         // Create ship from config (includes renderer)
         ship = new Ship(
@@ -251,6 +255,10 @@ public class StarfieldScene
             // Draw ship with model and shader
             ship.Draw(camera, lightDirection);
 
+            // Draw space dust last (transparent, follows ship)
+            Vector3 planetPosition = new Vector3(GameConfig.Instance.PlanetPositionX, GameConfig.Instance.PlanetPositionY, GameConfig.Instance.PlanetPositionZ);
+            spaceDust.Draw(camera, planetPosition, ship.Position);
+
             // Draw red cross at mouse raycast intersection
             if (mouseWorldPosition.HasValue)
             {
@@ -366,34 +374,34 @@ public class StarfieldScene
         int screenHeight = Raylib.GetScreenHeight();
 
         // Title
-        Raylib.DrawText("PHANTOM NEBULA", 10, 10, 20, Color.White);
+        FontManager.DrawText("PHANTOM NEBULA", 10, 10, 20, Color.White);
 
         // // Ship stats
         // Vector3 shipPos = ship.Transform.Position;
-        // Raylib.DrawText($"Ship Position: {shipPos.X:F2}, {shipPos.Y:F2}, {shipPos.Z:F2}", 10, 40, 12, Color.White);
-        // Raylib.DrawText($"Ship Speed: {ship.Systems.Speed:F2}", 10, 60, 12, Color.White);
-        // Raylib.DrawText($"Ship Health: {ship.Health.Percent:P0}", 10, 80, 12, Color.White);
+        // FontManager.DrawText($"Ship Position: {shipPos.X:F2}, {shipPos.Y:F2}, {shipPos.Z:F2}", 10, 40, 12, Color.White);
+        // FontManager.DrawText($"Ship Speed: {ship.Systems.Speed:F2}", 10, 60, 12, Color.White);
+        // FontManager.DrawText($"Ship Health: {ship.Health.Percent:P0}", 10, 80, 12, Color.White);
 
         // Planet stats
-        // Raylib.DrawText($"Planet Position: {planet.Transform.Position.X:F2}, {planet.Transform.Position.Y:F2}, {planet.Transform.Position.Z:F2}", 10, 100, 12, Color.White);
+        // FontManager.DrawText($"Planet Position: {planet.Transform.Position.X:F2}, {planet.Transform.Position.Y:F2}, {planet.Transform.Position.Z:F2}", 10, 100, 12, Color.White);
 
         // Camera info
         string targetName = cameraTarget == 0 ? "Planet" : "Ship";
-        Raylib.DrawText($"Camera Target: {targetName}", 10, 140, 12, Color.Yellow);
-        Raylib.DrawText($"Orbit Distance: {cameraController.OrbitDistance:F2}", 10, 160, 12, Color.Yellow);
+        FontManager.DrawText($"Camera Target: {targetName}", 10, 140, 12, Color.Yellow);
+        FontManager.DrawText($"Orbit Distance: {cameraController.OrbitDistance:F2}", 10, 160, 12, Color.Yellow);
 
         // Light direction info
-        Raylib.DrawText($"Light Dir: ({lightDirection.X:F2}, {lightDirection.Y:F2}, {lightDirection.Z:F2})", 10, 180, 12, new Color(0, 255, 255, 255));
-        Raylib.DrawText("Arrow Keys: Rotate Light", 10, 200, 12, Color.Gray);
+        //FontManager.DrawText($"Light Dir: ({lightDirection.X:F2}, {lightDirection.Y:F2}, {lightDirection.Z:F2})", 10, 180, 12, new Color(0, 255, 255, 255));
+        //FontManager.DrawText("Arrow Keys: Rotate Light", 10, 200, 12, Color.Gray);
 
         // GIF Recording/Saving status
         if (gifRecorder.IsRecording)
         {
-            Raylib.DrawText($"REC - {gifRecorder.FrameCount} frames", screenWidth - 200, 10, 14, Color.Red);
+            FontManager.DrawText($"REC - {gifRecorder.FrameCount} frames", screenWidth - 200, 10, 14, Color.Red);
         }
         else if (gifRecorder.IsSaving)
         {
-            Raylib.DrawText("SAVING...", screenWidth - 200, 10, 14, Color.Orange);
+            FontManager.DrawText("SAVING...", screenWidth - 200, 10, 14, Color.Orange);
         }
 
         // Controls
@@ -407,6 +415,7 @@ public class StarfieldScene
     {
         background.Dispose();
         planetRenderer.Dispose();
+        spaceDust.Dispose();
         ship.Dispose();
         gifRecorder.Dispose();
         Raylib.UnloadRenderTexture(sceneTexture);

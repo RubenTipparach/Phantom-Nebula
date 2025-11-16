@@ -130,7 +130,7 @@ public class BackgroundRenderer
         Rlgl.DisableBackfaceCulling();
 
         // Draw background sphere at camera position to wrap around it
-        DrawModel(model, camera.Position, 100.0f, Color.White);
+        DrawModel(model, camera.Position, 1000.0f, Color.White);
 
         // Re-enable backface culling
         Rlgl.EnableBackfaceCulling();
