@@ -80,6 +80,9 @@ public class StarfieldScene
         HandleInput();
         UpdateMouseRaycast();
 
+        // Set ship target speed from slider
+        ship.SetTargetSpeed(shipTargetSpeed);
+
         // Update ship
         ship.Update(deltaTime);
 
@@ -191,28 +194,34 @@ public class StarfieldScene
             }
         }
 
-        // A/D for ship rotation
+        // A/D for ship rotation - rotate relative to current ship heading
+        Vector2 currentShipHeading = Vector2.Normalize(new Vector2(ship.Forward.X, ship.Forward.Z));
+
         if (Raylib.IsKeyDown(KeyboardKey.A))
         {
+            // Turn left (90 degrees counter-clockwise from current heading)
+            float angle = MathF.PI / 2;
             shipTargetHeading = new Vector2(
-                (float)Math.Cos(Math.PI / 2),
-                (float)Math.Sin(Math.PI / 2)
+                currentShipHeading.X * MathF.Cos(angle) - currentShipHeading.Y * MathF.Sin(angle),
+                currentShipHeading.X * MathF.Sin(angle) + currentShipHeading.Y * MathF.Cos(angle)
             );
+            ship.SetTargetHeading(shipTargetHeading);
         }
         else if (Raylib.IsKeyDown(KeyboardKey.D))
         {
+            // Turn right (90 degrees clockwise from current heading)
+            float angle = -MathF.PI / 2;
             shipTargetHeading = new Vector2(
-                (float)Math.Cos(-Math.PI / 2),
-                (float)Math.Sin(-Math.PI / 2)
+                currentShipHeading.X * MathF.Cos(angle) - currentShipHeading.Y * MathF.Sin(angle),
+                currentShipHeading.X * MathF.Sin(angle) + currentShipHeading.Y * MathF.Cos(angle)
             );
+            ship.SetTargetHeading(shipTargetHeading);
         }
         else
         {
-            shipTargetHeading = Vector2.UnitY;
+            // No input - maintain current heading as target
+            ship.SetTargetHeading(currentShipHeading);
         }
-
-        ship.SetTargetSpeed(shipTargetSpeed);
-        ship.SetHeading(shipTargetHeading);
 
 
 
@@ -246,8 +255,10 @@ public class StarfieldScene
             // 3D mode with camera controller
             Raylib.BeginMode3D(camera);
 
-            // Draw background starfield with sun
+            // Draw background first (furthest from camera)
             background.Draw(camera, lightDirection);
+
+            // Draw opaque geometry with depth testing/writing
 
             // Draw planet with procedural shader
             planetRenderer.Draw(camera, lightDirection);
@@ -255,7 +266,7 @@ public class StarfieldScene
             // Draw ship with model and shader
             ship.Draw(camera, lightDirection);
 
-            // Draw space dust last (transparent, follows ship)
+            // Draw space dust last (transparent, blends with everything behind it)
             Vector3 planetPosition = new Vector3(GameConfig.Instance.PlanetPositionX, GameConfig.Instance.PlanetPositionY, GameConfig.Instance.PlanetPositionZ);
             spaceDust.Draw(camera, planetPosition, ship.Position);
 
@@ -375,6 +386,35 @@ public class StarfieldScene
 
         // Title
         FontManager.DrawText("PHANTOM NEBULA", 10, 10, 20, Color.White);
+
+        // Speed slider on right side (vertical)
+        float sliderWidth = 20;
+        float sliderHeight = 300;
+        float sliderX = screenWidth - 50;
+        float sliderY = (screenHeight - sliderHeight) / 2;
+
+        // Draw slider background
+        Raylib.DrawRectangle((int)sliderX, (int)sliderY, (int)sliderWidth, (int)sliderHeight, Color.DarkGray);
+
+        // Handle slider interaction
+        Vector2 mousePos = Raylib.GetMousePosition();
+        Rectangle sliderBounds = new(sliderX, sliderY, sliderWidth, sliderHeight);
+
+        if (Raylib.CheckCollisionPointRec(mousePos, sliderBounds) && Raylib.IsMouseButtonDown(MouseButton.Left))
+        {
+            // Calculate speed from mouse position (inverted because slider goes bottom to top)
+            float relativeY = mousePos.Y - sliderY;
+            shipTargetSpeed = 1.0f - (relativeY / sliderHeight);
+            shipTargetSpeed = Math.Clamp(shipTargetSpeed, 0.0f, 1.0f);
+        }
+
+        // Draw slider handle
+        float handleY = sliderY + (1.0f - shipTargetSpeed) * sliderHeight;
+        float handleHeight = 10;
+        Raylib.DrawRectangle((int)(sliderX - 2), (int)(handleY - handleHeight / 2), (int)(sliderWidth + 4), (int)handleHeight, Color.White);
+
+        // Display speed value
+        FontManager.DrawText($"Speed: {shipTargetSpeed:F2}", (int)(sliderX - 60), (int)(sliderY - 25), 12, Color.White);
 
         // // Ship stats
         // Vector3 shipPos = ship.Transform.Position;

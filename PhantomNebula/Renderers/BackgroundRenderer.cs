@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Raylib_cs;
 using static Raylib_cs.Raylib;
 
@@ -12,6 +13,15 @@ namespace PhantomNebula.Renderers;
 /// </summary>
 public class BackgroundRenderer
 {
+    // OpenGL constants for depth function
+    private const int GL_LESS = 0x0201;
+    private const int GL_LEQUAL = 0x0203;
+    private const int GL_EQUAL = 0x0202;
+
+    // P/Invoke for OpenGL depth function
+    [DllImport("opengl32.dll", EntryPoint = "glDepthFunc")]
+    private static extern void glDepthFunc(int func);
+
     private Shader backgroundShader;
     private Model model;
     private bool shaderLoaded = false;
@@ -126,14 +136,15 @@ public class BackgroundRenderer
         if (timeLoc != -1)
             SetShaderValue(backgroundShader, timeLoc, timeValue, ShaderUniformDataType.Float);
 
-        // Disable backface culling so we can see inside the sphere
+        // We are inside the sphere, we need to disable backface culling!
         Rlgl.DisableBackfaceCulling();
+        Rlgl.DisableDepthMask();
 
         // Draw background sphere at camera position to wrap around it
-        DrawModel(model, camera.Position, 1000.0f, Color.White);
+        DrawModel(model, camera.Position, 100.0f, Color.White);
 
-        // Re-enable backface culling
         Rlgl.EnableBackfaceCulling();
+        Rlgl.EnableDepthMask();
     }
 
     public void Dispose()

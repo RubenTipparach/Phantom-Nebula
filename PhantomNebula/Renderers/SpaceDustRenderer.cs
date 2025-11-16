@@ -96,7 +96,7 @@ public class SpaceDustRenderer
         // Disable backface culling for double-sided rendering
         Rlgl.DisableBackfaceCulling();
 
-        // Disable depth writing so transparent parts don't block objects behind
+        // Disable depth writing so transparent dust blends with background
         Rlgl.DisableDepthMask();
 
         // Draw the plane
