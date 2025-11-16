@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Raylib_cs;
 using PhantomNebula.Core;
+using static Raylib_cs.Raylib;
 
 namespace PhantomNebula.Scenes;
 
@@ -16,9 +17,11 @@ public class StarfieldScene
     private Entity planet;
     private PlanetRenderer planetRenderer;
     private Ship ship;
+    private ShipRenderer shipRenderer;
     private CameraController cameraController;
     private GifRecorder gifRecorder;
     private RenderTexture2D sceneTexture;
+    private Vector3 lightPosition = new Vector3(100.0f, 50.0f, 0.0f);
 
     // Input state
     private float shipTargetSpeed = 0f;
@@ -40,8 +43,11 @@ public class StarfieldScene
         // Create ship
         ship = new Ship(new Vector3(5, 0, 0), 0.5f);
 
-        // Create camera controller orbiting the planet
-        cameraController = new CameraController(planet.Transform);
+        // Create ship renderer
+        shipRenderer = new ShipRenderer(ship.Transform.Position, 0.5f);
+
+        // Create camera controller orbiting the ship (not the planet)
+        cameraController = new CameraController(ship.Transform);
 
         // Initialize GIF recorder
         gifRecorder = new GifRecorder();
@@ -160,8 +166,8 @@ public class StarfieldScene
             // Draw test mesh (red cube) - offset from planet
             // testMesh.Draw(new Vector3(3.0f, 0, 0));
 
-            // Draw ship as a simple cube
-            DrawShip();
+            // Draw ship with model and shader
+            shipRenderer.Draw(camera, lightPosition);
 
             Raylib.EndMode3D();
 
@@ -180,15 +186,6 @@ public class StarfieldScene
         {
             gifRecorder.CaptureFrameFromTexture(sceneTexture);
         }
-    }
-
-    private void DrawShip()
-    {
-        // Draw ship as colored cube
-        Vector3 shipPos = ship.Transform.Position;
-        Vector3 shipScale = ship.Transform.Scale;
-        Raylib.DrawCubeWires(shipPos, shipScale.X * 2.0f, shipScale.Y, shipScale.Z * 3.0f, Color.Green);
-        Raylib.DrawCube(shipPos, shipScale.X * 0.3f, shipScale.Y * 0.3f, shipScale.Z * 0.3f, Color.Lime);
     }
 
     private void DrawUI()

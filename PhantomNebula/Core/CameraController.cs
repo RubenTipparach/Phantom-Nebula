@@ -103,9 +103,9 @@ public class CameraController
             (float)(Math.Cos(yaw) * Math.Cos(pitch) * orbitDistance)
         );
 
-        // Set camera position relative to target
+        // Set camera position relative to target - simple orbit centered on target
         camera.Position = targetTransform.Position + orbitPos;
-        camera.Target = targetTransform.Position + targetTransform.Up * 0.5f;
+        camera.Target = targetTransform.Position;
         camera.Up = Vector3.UnitY;
     }
 
