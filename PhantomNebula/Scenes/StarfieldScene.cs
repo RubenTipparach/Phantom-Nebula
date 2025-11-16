@@ -21,8 +21,8 @@ public class StarfieldScene
     private GifRecorder gifRecorder;
     private RenderTexture2D sceneTexture;
 
-    // Directional light - sun position: Y positive (up), X negative (left), Z positive (forward)
-    private Vector3 lightDirection = Vector3.Normalize(new Vector3(0.0f, 1.0f, 1.0f));
+    // Directional light - sun position
+    private Vector3 lightDirection = Vector3.Normalize(new Vector3(0.0f, 0.26f, 0.96f));
 
     // Input state
     private float shipTargetSpeed = 0f;
