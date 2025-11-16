@@ -30,7 +30,7 @@ void main()
     vec3 diffuse = albedo.rgb * ndotl;
 
     // Ambient lighting
-    vec3 ambient = albedo.rgb * 0.2;
+    vec3 ambient = albedo.rgb * 0.02;
 
     // Specular lighting (Blinn-Phong)
     vec3 halfVec = normalize(lightDir + viewDir);
@@ -39,13 +39,13 @@ void main()
 
     // Rim lighting for silhouette
     float rim = pow(1.0 - max(0.0, dot(viewDir, normal)), 2.0);
-    vec3 rimLight = vec3(0.5, 0.7, 1.0) * rim * 0.3;
+    vec3 rimLight = vec3(0.5, 0.7, 1.0) * rim * 0.01;
 
     // Combine lighting
-    vec3 lit = ambient + diffuse + specular + rimLight;
+    vec3 lit = ambient + diffuse  + specular + rimLight ;
 
     // Add emissive (glow from engine, etc)
-    lit += emissive.rgb * emissive.a * 2.0;
+    lit += albedo.rgb * emissive.rgb * 1.0;
 
     // Tone mapping and gamma correction
     lit = pow(lit, vec3(1.0 / 2.2));
