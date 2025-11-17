@@ -17,6 +17,7 @@ public class StarfieldScene
     private BackgroundRenderer background;
     private PlanetRenderer planetRenderer;
     private SpaceDustRenderer spaceDust;
+    private SpeedLinesRenderer speedLines;
     private Ship ship;
     private CameraController cameraController;
     private GifRecorder gifRecorder;
@@ -57,6 +58,9 @@ public class StarfieldScene
         // Initialize space dust renderer
         spaceDust = new SpaceDustRenderer();
 
+        // Initialize speed lines renderer
+        speedLines = new SpeedLinesRenderer();
+
         // Create ship from config (includes renderer)
         ship = new Ship(
             new Vector3(config.ShipPositionX, config.ShipPositionY, config.ShipPositionZ),
@@ -89,6 +93,10 @@ public class StarfieldScene
 
         // Update ship
         ship.Update(deltaTime);
+
+        // Update speed lines
+        Vector3 shipForward = new Vector3(ship.Forward.X, ship.Forward.Y, ship.Forward.Z);
+        speedLines.Update(ship.Position, shipForward, ship.Systems.Speed, deltaTime);
 
         // Update camera controller (ignore mouse input when interacting with UI)
         cameraController.Update(deltaTime, isMouseOverUI);
@@ -276,6 +284,9 @@ public class StarfieldScene
             // 3D mode with camera controller
             Raylib.BeginMode3D(camera);
 
+            // Calculate ship forward vector for rendering
+            Vector3 shipForward = new Vector3(ship.Forward.X, ship.Forward.Y, ship.Forward.Z);
+
             // Draw background first (furthest from camera)
             background.Draw(camera, lightDirection);
 
@@ -287,9 +298,12 @@ public class StarfieldScene
             // Draw ship with model and shader
             ship.Draw(camera, lightDirection);
 
-            // Draw space dust last (transparent, blends with everything behind it)
+            // Draw space dust (transparent, blends with everything behind it)
             Vector3 planetPosition = new Vector3(GameConfig.Instance.PlanetPositionX, GameConfig.Instance.PlanetPositionY, GameConfig.Instance.PlanetPositionZ);
             spaceDust.Draw(camera, planetPosition, ship.Position);
+
+            // Draw speed lines around ship
+            speedLines.Draw(shipForward);
 
             // Draw red cross at mouse raycast intersection
             if (mouseWorldPosition.HasValue)

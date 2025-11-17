@@ -25,8 +25,8 @@ public class GifRecorder
     private int frameCount = 0;
     private int screenWidth = 1280;
     private int screenHeight = 720;
-    private int captureWidth = 640;  // Half resolution
-    private int captureHeight = 360; // Half resolution
+    private int captureWidth = 320;  // 320x160 resolution
+    private int captureHeight = 160; // 320x160 resolution
     private const int MAX_FRAMES = 240; // 10 seconds at 24fps
     private static int recordingIndex = 0;
     private Task? savingTask = null;
@@ -180,14 +180,10 @@ public class GifRecorder
             // Convert Raylib image to pixel data, compositing alpha on black background
             byte[] pixelData = ConvertRaylibImageToRgb24WithComposite(textureImage, actualWidth, actualHeight);
 
-            // Load as ImageSharp image and resize to half resolution
+            // Load as ImageSharp image and resize to 320x160
             using (var fullSharpImage = SharpImage.LoadPixelData<Rgb24>(pixelData, actualWidth, actualHeight))
             {
-                // Calculate half resolution from actual captured dimensions
-                captureWidth = actualWidth / 2;
-                captureHeight = actualHeight / 2;
-
-                // Resize to half resolution using high-quality bicubic resampling
+                // Resize to 320x160 using high-quality bicubic resampling
                 fullSharpImage.Mutate(x => x.Resize(captureWidth, captureHeight, KnownResamplers.Bicubic));
 
                 // Clone as RGB24 for GIF storage
@@ -236,14 +232,10 @@ public class GifRecorder
             // Convert Raylib image to pixel data using actual image dimensions
             byte[] pixelData = ConvertRaylibImageToRgb24(fullImage, actualWidth, actualHeight);
 
-            // Load as ImageSharp image and resize to half resolution
+            // Load as ImageSharp image and resize to 320x160
             using (var fullSharpImage = SharpImage.LoadPixelData<Rgb24>(pixelData, actualWidth, actualHeight))
             {
-                // Calculate half resolution from actual captured dimensions
-                captureWidth = actualWidth / 2;
-                captureHeight = actualHeight / 2;
-
-                // Resize to half resolution using high-quality bicubic resampling
+                // Resize to 320x160 using high-quality bicubic resampling
                 fullSharpImage.Mutate(x => x.Resize(captureWidth, captureHeight, KnownResamplers.Bicubic));
 
                 // Clone as RGB24 for GIF storage
@@ -317,8 +309,8 @@ public class GifRecorder
                         return;
                     }
 
-                    // Shift all black pixels to (1, 0, 0) to avoid black being treated as transparent
-                    // This ensures pure black (0,0,0) is never used in the image
+                    // Set floor of all colors to (1,1,1) to avoid transparency
+                    // This ensures no color channel is pure 0
                     foreach (var frame in framesToSave)
                     {
                         frame.ProcessPixelRows(accessor =>
@@ -328,11 +320,11 @@ public class GifRecorder
                                 var row = accessor.GetRowSpan(y);
                                 for (int x = 0; x < row.Length; x++)
                                 {
-                                    // If pixel is pure black, shift to (1, 0, 0)
-                                    if (row[x].R == 0 && row[x].G == 0 && row[x].B == 0)
-                                    {
-                                        row[x] = new Rgb24(1, 0, 0);
-                                    }
+                                    // Set minimum value of 1 for each color channel
+                                    byte r = Math.Max((byte)1, row[x].R);
+                                    byte g = Math.Max((byte)1, row[x].G);
+                                    byte b = Math.Max((byte)1, row[x].B);
+                                    row[x] = new Rgb24(r, g, b);
                                 }
                             }
                         });
@@ -351,7 +343,7 @@ public class GifRecorder
                         // Set first frame delay through root frame metadata
                         var rootFrameMetadata = gifImage.Frames.RootFrame.Metadata.GetGifMetadata();
                         rootFrameMetadata.FrameDelay = frameDelayCs;
-                        rootFrameMetadata.DisposalMethod = GifDisposalMethod.RestoreToBackground;
+                        rootFrameMetadata.DisposalMethod = GifDisposalMethod.RestoreToBackground; // Don't clear frame - just draw over it
                         rootFrameMetadata.HasTransparency = false;
 
                         // Add remaining frames
@@ -363,7 +355,7 @@ public class GifRecorder
                             var addedFrame = gifImage.Frames[gifImage.Frames.Count - 1];
                             var frameMetadata = addedFrame.Metadata.GetGifMetadata();
                             frameMetadata.FrameDelay = frameDelayCs;
-                            frameMetadata.DisposalMethod = GifDisposalMethod.RestoreToBackground;
+                            frameMetadata.DisposalMethod = GifDisposalMethod.RestoreToBackground; // Don't clear frame - just draw over it
                             frameMetadata.HasTransparency = false;
                         }
 
@@ -374,14 +366,15 @@ public class GifRecorder
                             frameGifMeta.HasTransparency = false;
                         }
 
-                        // Create encoder with 64-color quantizer for smaller file sizes
-                        var quantizerOptions = new QuantizerOptions
-                        {
-                            MaxColors = 64
-                        };
+                        // Create encoder with Wu quantizer - highest quality color reduction
                         var encoder = new GifEncoder
                         {
-                            Quantizer = new OctreeQuantizer(quantizerOptions)
+                            Quantizer = new WuQuantizer(new QuantizerOptions
+                            {
+                                MaxColors = 256,
+                                Dither = null // No dithering for cleaner output
+                            }),
+                            ColorTableMode = GifColorTableMode.Local // Use global color table
                         };
 
                         // Save to file
