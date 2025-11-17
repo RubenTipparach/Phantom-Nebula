@@ -1,19 +1,55 @@
-debugMode: false
-enableLightDirectionControls: false
-lightDirectionX: 0
-lightDirectionY: 0.26
-lightDirectionZ: 0.96
-planetPositionX: -100
-planetPositionY: 0
-planetPositionZ: 0
-planetScale: 4
-planetRotationX: 0
-planetRotationY: 0
-planetRotationZ: 0
-shipPositionX: 5
-shipPositionY: 0
-shipPositionZ: 0
-shipScale: 0.2
-shipRotationX: 0
-shipRotationY: 0
-shipRotationZ: 0
+debug:
+  debugMode: false
+  debugPhysics: true
+
+models:
+  ship:
+    model: "Resources/Models/shippy1.obj"
+    albedo: "Resources/Models/shippy.png"
+    emissive: "Resources/Models/shippy_em.png"
+  satellite:
+    model: "Resources/Models/satelite.obj"
+    albedo: "Resources/default_1.png"
+  planet:
+    albedo: "Resources/planet.png"
+
+lighting:
+  enableLightDirectionControls: false
+  lightDirection:
+    x: 0
+    y: 0.26
+    z: 0.96
+
+objects:
+  planet:
+    position:
+      x: -100
+      y: 0
+      z: 0
+    scale: 4
+    rotation:
+      x: 0
+      y: 0
+      z: 0
+
+  ship:
+    position:
+      x: 5
+      y: 0
+      z: 0
+    scale: 0.2
+    rotation:
+      x: 0
+      y: 0
+      z: 0
+
+  satellite:
+    position:
+      x: 20
+      y: 0
+      z: 20
+    scale: 0.5
+    rotation:
+      x: 0
+      y: 0
+      z: 0

@@ -3,6 +3,7 @@ using System.Numerics;
 using Raylib_cs;
 using PhantomNebula.Core;
 using PhantomNebula.Game;
+using PhantomNebula.Physics;
 using PhantomNebula.Renderers;
 using static Raylib_cs.Raylib;
 
@@ -19,9 +20,17 @@ public class StarfieldScene
     private SpaceDustRenderer spaceDust;
     private SpeedLinesRenderer speedLines;
     private Ship ship;
+    private Ship satellite;
     private CameraController cameraController;
     private GifRecorder gifRecorder;
     private RenderTexture2D sceneTexture;
+
+    // Physics world for collision debugging
+    private PhysicsWorld physicsWorld;
+    private PhysicsDebugRenderer physicsDebugRenderer;
+
+    // Health bar rendering
+    private HealthBarRenderer healthBarRenderer;
 
     // Directional light - loaded from config
     private Vector3 lightDirection;
@@ -67,6 +76,49 @@ public class StarfieldScene
             config.ShipScale
         );
 
+        // Create satellite from config using Ship class with satellite model and textures
+        satellite = new Ship(
+            new Vector3(config.SatellitePositionX, config.SatellitePositionY, config.SatellitePositionZ),
+            config.SatelliteScale,
+            config.Models.Satellite.Model,
+            config.Models.Satellite.Albedo);
+
+        // Keep satellite stationary (speed 0)
+        satellite.SetTargetSpeed(0f);
+
+        // Initialize physics world and create colliders
+        physicsWorld = new PhysicsWorld();
+
+        // Add planet collider (static)
+        physicsWorld.AddStaticCollider(
+            "Planet",
+            planetPosition,
+            new Vector3(1, 1, 1),
+            new SphereCollider(50.0f) // Planet radius approximation
+        );
+
+        // Add ship collider (kinematic)
+        physicsWorld.AddKinematicCollider(
+            "Ship",
+            new Vector3(config.ShipPositionX, config.ShipPositionY, config.ShipPositionZ),
+            new Vector3(config.ShipScale, config.ShipScale, config.ShipScale),
+            new BoxCollider(0.5f, 0.3f, 1.0f) // Approximate ship dimensions
+        );
+
+        // Add satellite collider (kinematic)
+        physicsWorld.AddKinematicCollider(
+            "Satellite",
+            new Vector3(config.SatellitePositionX, config.SatellitePositionY, config.SatellitePositionZ),
+            new Vector3(config.SatelliteScale, config.SatelliteScale, config.SatelliteScale),
+            new SphereCollider(0.5f) // Approximate satellite as sphere
+        );
+
+        // Create physics debug renderer
+        physicsDebugRenderer = new PhysicsDebugRenderer(physicsWorld);
+
+        // Create health bar renderer
+        healthBarRenderer = new HealthBarRenderer();
+
         // Create camera controller orbiting the ship (not the planet)
         cameraController = new CameraController(ship);
 
@@ -93,6 +145,27 @@ public class StarfieldScene
 
         // Update ship
         ship.Update(deltaTime);
+
+        // Update satellite (autonomous movement)
+        satellite.Update(deltaTime);
+
+        // Update physics world
+        physicsWorld.Update(deltaTime);
+
+        // Sync collider positions with game objects
+        physicsWorld.UpdateColliderPosition("Ship", ship.Position);
+        physicsWorld.UpdateColliderPosition("Satellite", satellite.Position);
+
+        // Check for collisions with planet
+        if (physicsWorld.IsColliding("Ship", "Planet"))
+        {
+            ship.TakeDamage(50f * deltaTime); // 50 damage per second on collision
+        }
+
+        if (physicsWorld.IsColliding("Satellite", "Planet"))
+        {
+            satellite.TakeDamage(50f * deltaTime); // 50 damage per second on collision
+        }
 
         // Update speed lines
         Vector3 shipForward = new Vector3(ship.Forward.X, ship.Forward.Y, ship.Forward.Z);
@@ -298,12 +371,21 @@ public class StarfieldScene
             // Draw ship with model and shader
             ship.Draw(camera, lightDirection);
 
+            // Draw satellite with model and shader
+            satellite.Draw(camera, lightDirection);
+
             // Draw space dust (transparent, blends with everything behind it)
             Vector3 planetPosition = new Vector3(GameConfig.Instance.PlanetPositionX, GameConfig.Instance.PlanetPositionY, GameConfig.Instance.PlanetPositionZ);
             spaceDust.Draw(camera, planetPosition, ship.Position);
 
             // Draw speed lines around ship
             speedLines.Draw(shipForward);
+
+            // Draw physics debug colliders (if enabled in config)
+            if (GameConfig.Instance.Debug.DebugPhysics)
+            {
+                physicsDebugRenderer.Draw();
+            }
 
             // Draw red cross at mouse raycast intersection
             if (mouseWorldPosition.HasValue)
@@ -316,6 +398,12 @@ public class StarfieldScene
             {
                 DrawShipDebugLines();
             }
+
+            // Draw health bars for ship and satellite (before ending 3D mode so they're in 3D space)
+            int screenWidth = GetScreenWidth();
+            int screenHeight = GetScreenHeight();
+            healthBarRenderer.DrawHealthBar(ship, camera, screenWidth, screenHeight);
+            healthBarRenderer.DrawHealthBar(satellite, camera, screenWidth, screenHeight);
 
             Raylib.EndMode3D();
         }
@@ -504,6 +592,8 @@ public class StarfieldScene
         planetRenderer.Dispose();
         spaceDust.Dispose();
         ship.Dispose();
+        satellite.Dispose();
+        physicsWorld.Dispose();
         gifRecorder.Dispose();
         Raylib.UnloadRenderTexture(sceneTexture);
     }

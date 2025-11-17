@@ -19,17 +19,33 @@ public class ShipRenderer
     private Shader shipShader;
     private bool shaderLoaded = false;
 
-    public ShipRenderer()
+    public ShipRenderer(string modelPath = "Resources/Models/shippy1.obj",
+                        string albedoPath = "Resources/Models/shippy.png",
+                        string emissivePath = "Resources/Models/shippy_em.png")
     {
 
         try
         {
-            // Load ship textures
-            shipTexture = LoadTexture("Resources/Models/shippy.png");
-            shipEmissiveTexture = LoadTexture("Resources/Models/shippy_em.png");
+            // Load albedo texture
+            shipTexture = LoadTexture(albedoPath);
+
+            // Load emissive texture or create black texture if not provided
+            if (!string.IsNullOrEmpty(emissivePath) && System.IO.File.Exists(emissivePath))
+            {
+                shipEmissiveTexture = LoadTexture(emissivePath);
+                Console.WriteLine($"[ShipRenderer] Loaded emissive texture from {emissivePath}");
+            }
+            else
+            {
+                // Create 1x1 black pixel texture for no glow
+                Image blackImage = GenImageColor(1, 1, new Color(0, 0, 0, 255));
+                shipEmissiveTexture = LoadTextureFromImage(blackImage);
+                UnloadImage(blackImage);
+                Console.WriteLine("[ShipRenderer] Using 1x1 black texture for emissive");
+            }
 
             // Load the ship model (already has smooth normals from OBJ)
-            shipModel = LoadModel("Resources/Models/shippy1.obj");
+            shipModel = LoadModel(modelPath);
 
             Console.WriteLine("[ShipRenderer] Loaded shippy model successfully");
 

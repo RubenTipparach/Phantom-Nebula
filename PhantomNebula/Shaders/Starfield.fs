@@ -75,22 +75,6 @@ float fastdist(vec3 a, vec3 b)
     return sqr(b.x - a.x) + sqr(b.y - a.y) + sqr(b.z - a.z);
 }
 
-// Smooth noise function with interpolation
-float smoothNoise(float x)
-{
-    float i = floor(x);
-    float f = fract(x);
-
-    // Smooth interpolation (smoothstep)
-    float u = f * f * (3.0 - 2.0 * f);
-
-    // Sample noise at integer positions and interpolate
-    float a = hash(i);
-    float b = hash(i + 1.0);
-
-    return mix(a, b, u);
-}
-
 //=============================================================================
 // VORONOI
 //=============================================================================
@@ -171,31 +155,10 @@ vec3 renderSun(vec3 dir, vec3 lightDir)
     float glow = smoothstep(1.0 - SunGlowSize, 1.0, sunDot);
     glow = pow(glow, 2.0);
 
-    // Add animated corona noise
-    // Calculate perpendicular vector to sun direction for radial pattern
-    vec3 perpendicular = normalize(cross(sunDir, vec3(0.0, 1.0, 0.0)));
-    if (length(perpendicular) < 0.01) {
-        perpendicular = normalize(cross(sunDir, vec3(1.0, 0.0, 0.0)));
-    }
-    vec3 tangent = normalize(cross(sunDir, perpendicular));
-
-    // Project view direction onto the plane perpendicular to sun
-    float radialX = dot(dir, perpendicular);
-    float radialY = dot(dir, tangent);
-    float angle = atan(radialY, radialX);
-
-    // Create smooth corona variation using multiple octaves of interpolated noise
-    float corona1 = smoothNoise(angle * 4.0);
-    //float corona2 = smoothNoise(angle * 8.0);
-    //float corona3 = smoothNoise(angle * 16.0);
-
-    // Combine octaves for organic variation
-    float coronaPattern = corona1 * 0.5;// + corona2 * 0.3 + corona3 * 0.2;
-
-    float corona = coronaPattern * CoronaBrightness;
-    corona *= smoothstep(1.0 - SunGlowSize, 1.0 - SunSize * 0.5, sunDot);
+    // Simple static corona
+    float corona = smoothstep(1.0 - SunGlowSize, 1.0 - SunSize * 0.5, sunDot);
     corona *= smoothstep(1.0, 1.0 - SunSize * 2.0, sunDot);
-    corona *= CoronaTransparency;
+    corona *= CoronaBrightness * CoronaTransparency;
 
     // Combine effects
     vec3 sunColor = mix(SunGlowColor, SunCoreColor, core);

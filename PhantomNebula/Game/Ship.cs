@@ -10,8 +10,9 @@ namespace PhantomNebula.Game;
 /// <summary>
 /// Ship entity with simplified kinematic movement
 /// Extends Transform for transform-based positioning
+/// Implements ITarget for targeting and health tracking
 /// </summary>
-public class Ship : Core.Transform, IDisposable
+public class Ship : Core.Transform, ITarget, IDisposable
 {
     // Ship systems
     public ShipSystems Systems { get; private set; } = new();
@@ -19,6 +20,13 @@ public class Ship : Core.Transform, IDisposable
 
     // Ship renderer
     public ShipRenderer Renderer { get; private set; }
+
+    // ITarget interface implementation
+    public string TargetName => "Ship";
+    public float CurrentHealth => Health.Health;
+    public float StartingHealth => Health.startingHealth;
+    public float HealthPercent => Health.Percent;
+    public bool IsDead => Health.IsDead;
 
     private float targetSpeed = 0f;
     private float currentSpeed = 0f;
@@ -35,7 +43,10 @@ public class Ship : Core.Transform, IDisposable
     // Public state
     public bool IsRotating { get; private set; } = false;
 
-    public Ship(Vector3 initialPosition, float scale = 1.0f)
+    public Ship(Vector3 initialPosition, float scale = 1.0f,
+                string modelPath = "Resources/Models/shippy1.obj",
+                string albedoPath = "Resources/Models/shippy.png",
+                string emissivePath = "")
     {
         Position = initialPosition;
         Scale = new Vector3(scale, scale, scale);
@@ -45,8 +56,9 @@ public class Ship : Core.Transform, IDisposable
         Systems.Heading = new Vector2(Forward.X, Forward.Z);
         Systems.Speed = currentSpeed;
 
-        // Initialize renderer
-        Renderer = new ShipRenderer();
+        // Initialize renderer with provided model and texture paths
+        // If emissivePath is empty/null, ShipRenderer will create a black 1x1 pixel texture
+        Renderer = new ShipRenderer(modelPath, albedoPath, emissivePath ?? "");
     }
 
     /// <summary>
