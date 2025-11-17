@@ -25,12 +25,12 @@ public class SpeedLinesRenderer
 
     // Configuration
     private const int LineCount = 200;
-    private const float SpawnRadius = 15.0f; // Radius around ship where lines spawn
+    private const float SpawnRadius = 30.0f; // Radius around ship where lines spawn
     private const float LineLength = 1.0f;
     private const float MinLineLength = 0.1f; // Minimum line length
     private const float MinSpeedThreshold = 0.1f; // Don't spawn lines below this speed
     private const float MaxLifetime = 10.0f; // Lines expire after 10 seconds
-    private const float MaxDistance = 15.0f; // Deactivate lines that fall too far behind ship
+    private const float MaxDistance = 30.0f; // Deactivate lines that fall too far behind ship
     private const float SpawnRate = 0.02f; // Probability of spawning per frame (balanced with lifetime)
 
     public SpeedLinesRenderer()
@@ -50,7 +50,7 @@ public class SpeedLinesRenderer
         // Generate random point in a sphere using spherical coordinates
         float theta = (float)(random.NextDouble() * Math.PI * 2); // Azimuthal angle (0 to 2π)
         float phi = (float)(Math.Acos(2.0 * random.NextDouble() - 1.0)); // Polar angle (0 to π) - uniform distribution
-        float radius = (float)(Math.Pow(random.NextDouble(), 1.0/3.0) * SpawnRadius); // Cube root for uniform volume distribution
+        float radius = (float)(Math.Pow(random.NextDouble(), 1.0 / 3.0) * SpawnRadius); // Cube root for uniform volume distribution
 
         // Convert spherical to Cartesian coordinates
         float x = radius * (float)Math.Sin(phi) * (float)Math.Cos(theta);
