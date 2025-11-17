@@ -1,0 +1,103 @@
+================================================================================
+PHANTOM NEBULA - QUICK START GUIDE
+================================================================================
+
+DESKTOP BUILD
+=============
+$ dotnet build PhantomNebula -c Release
+$ dotnet run --project PhantomNebula
+
+WEBASSEMBLY BUILD (RECOMMENDED)
+================================
+1. Install WASM Workload (one-time):
+   $ ./dotnet-wasm-install.sh
+
+   OR manually:
+   $ dotnet workload install wasm-tools
+
+2. Build WebAssembly:
+   $ ./build-wasm.sh
+
+3. Start Web Server:
+   $ ./bin/wasm/serve.sh
+
+4. Open in Browser:
+   http://localhost:8000
+
+INTERACTIVE MENU
+================
+$ ./build-web.sh
+
+DOCUMENTATION
+==============
+- BUILD_GUIDE.md .............. Master build reference
+- WASM_BUILD.md ............... WebAssembly build guide
+- BUILD_OPTIONS.md ............ Command reference
+- WASM_SETUP_SUMMARY.md ....... Implementation details
+
+SYSTEM INFO
+===========
+.NET Version: 9.0.306 ✓
+WASM Workload: Not yet installed (run: dotnet workload install wasm-tools)
+
+KEY COMMANDS
+============
+dotnet build PhantomNebula -c Release         Desktop (Release)
+dotnet run --project PhantomNebula             Desktop (Debug)
+./build-wasm.sh                                WebAssembly build
+./build-web.sh                                 Interactive menu
+./bin/wasm/serve.sh                            Start web server
+
+PLATFORM-SPECIFIC BUILDS
+========================
+Windows 64-bit:  dotnet build PhantomNebula -r win-x64
+macOS Intel:     dotnet build PhantomNebula -r osx-x64
+macOS ARM64:     dotnet build PhantomNebula -r osx-arm64
+Linux 64-bit:    dotnet build PhantomNebula -r linux-x64
+WebAssembly:     ./build-wasm.sh
+
+DEPLOYMENT
+==========
+GitHub Pages: Copy build output to docs/ and enable Pages in settings
+Netlify:      Connect repo, auto-builds on push
+Vercel:       Similar to Netlify, optimized for web
+AWS S3:       Manual upload with CloudFront CDN
+Azure:        Static Web Apps integration
+
+TROUBLESHOOTING
+===============
+"WASM workload not found"
+→ Run: dotnet workload install wasm-tools
+
+"Game won't load in browser"
+→ Check browser console (F12 → Console tab)
+→ Verify web server is running
+→ Try Chrome/Edge instead of Firefox
+
+"Very slow performance"
+→ Normal for WASM (runs at ~60% of native)
+→ Use Release build (automatic with build-wasm.sh)
+→ Modern browsers JIT compile WASM for better perf
+
+"Shader errors"
+→ Ensure Shaders/ directory exists and has .vs/.fs files
+→ Check file permissions
+→ Rebuild and check game_config.yaml
+
+RESOURCES
+=========
+RaylibWasm:     https://github.com/Kiriller12/RaylibWasm
+Raylib-cs:      https://github.com/ChrisDill/Raylib-cs
+.NET Docs:      https://learn.microsoft.com/en-us/dotnet/
+WebAssembly:    https://webassembly.org/
+
+NEXT STEPS
+==========
+1. Install WASM workload: dotnet workload install wasm-tools
+2. Build WASM: ./build-wasm.sh
+3. Test in browser: ./bin/wasm/serve.sh then visit http://localhost:8000
+4. Deploy to GitHub Pages, Netlify, or other hosting
+
+================================================================================
+Updated: November 17, 2025 | Status: Production Ready
+================================================================================

@@ -34,7 +34,24 @@ echo "   Command: dotnet build PhantomNebula -c Release"
 echo "   Output:  bin/Release/PhantomNebula"
 echo ""
 
-echo "2. ${YELLOW}Blazor WebAssembly${NC} (Recommended for WASM)"
+echo "2. ${GREEN}RaylibWasm (Native Raylib-cs WASM)${NC} (Recommended for WASM)"
+echo "   Pros:"
+echo "     ✓ Native Raylib-cs in browser"
+echo "     ✓ Direct .NET to WASM compilation"
+echo "     ✓ Minimal code changes from desktop version"
+echo "     ✓ Full game logic portability"
+echo "   Cons:"
+echo "     ✗ Requires .NET 8.0+ wasm-tools workload"
+echo "     ✗ RaylibWasm still relatively new"
+echo "   "
+echo "   Setup steps:"
+echo "     1. dotnet workload install wasm-tools"
+echo "     2. Run: ./build-wasm.sh"
+echo "     3. Run: bin/wasm/serve.sh"
+echo "     4. Open: http://localhost:8000"
+echo ""
+
+echo "3. ${YELLOW}Blazor WebAssembly${NC} (Alternative for WASM)"
 echo "   Pros:"
 echo "     ✓ Runs in browser"
 echo "     ✓ Direct .NET to WASM"
@@ -49,7 +66,7 @@ echo "     2. Use Canvas/WebGL APIs for rendering"
 echo "     3. Port game logic to Blazor components"
 echo ""
 
-echo "3. ${YELLOW}Emscripten Conversion${NC} (Experimental)"
+echo "4. ${YELLOW}Emscripten Conversion${NC} (Experimental)"
 echo "   Pros:"
 echo "     ✓ Can convert existing C/C++ to WASM"
 echo "   Cons:"
@@ -136,12 +153,13 @@ show_menu() {
     echo -e "${YELLOW}What would you like to do?${NC}"
     echo ""
     echo "1) Build native desktop executable"
-    echo "2) Show Blazor setup instructions"
-    echo "3) Show common build commands"
-    echo "4) Check available tools"
-    echo "5) Exit"
+    echo "2) Build for WebAssembly (RaylibWasm)"
+    echo "3) Show Blazor setup instructions"
+    echo "4) Show common build commands"
+    echo "5) Check available tools"
+    echo "6) Exit"
     echo ""
-    read -p "Select option (1-5): " choice
+    read -p "Select option (1-6): " choice
 
     case $choice in
         1)
@@ -152,15 +170,20 @@ show_menu() {
             echo "Output: PhantomNebula/bin/Release/net8.0/PhantomNebula"
             ;;
         2)
-            create_blazor_project
+            echo ""
+            echo -e "${BLUE}Building for WebAssembly...${NC}"
+            ./build-wasm.sh
             ;;
         3)
-            show_commands
+            create_blazor_project
             ;;
         4)
-            check_tools
+            show_commands
             ;;
         5)
+            check_tools
+            ;;
+        6)
             echo "Exiting..."
             exit 0
             ;;

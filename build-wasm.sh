@@ -3,12 +3,15 @@
 ################################################################################
 # Phantom Nebula WASM Build Script
 #
-# This script builds the game into WebAssembly format.
-# Note: Raylib-cs doesn't officially support WASM yet. This script provides
-# alternative approaches:
-# 1. Build as native binary and use Emscripten to compile to WASM
-# 2. Port to Blazor WebAssembly
-# 3. Use a JavaScript/WebGL alternative
+# Builds PhantomNebula for WebAssembly using RaylibWasm approach
+# Requires: .NET 8.0+ with wasm-tools workload
+#
+# Build process:
+# 1. Install wasm-tools workload
+# 2. Publish project with WASM runtime identifier
+# 3. Generate browser-ready artifacts
+#
+# See: https://github.com/Kiriller12/RaylibWasm
 ################################################################################
 
 set -e
@@ -26,197 +29,218 @@ OUTPUT_DIR="bin/wasm"
 BUILD_CONFIG="${1:-Release}"
 
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║  Phantom Nebula WASM Build Script      ║${NC}"
+echo -e "${BLUE}║ Phantom Nebula WASM Build (RaylibWasm) ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
 echo ""
 
-# Check if Emscripten is installed
-check_emscripten() {
-    if command -v emcc &> /dev/null; then
-        echo -e "${GREEN}✓ Emscripten found${NC}"
+# Check .NET version
+check_dotnet() {
+    if command -v dotnet &> /dev/null; then
+        version=$(dotnet --version)
+        echo -e "${GREEN}✓ .NET found: $version${NC}"
+
+        # Check if version is 8.0 or higher
+        major=$(echo "$version" | cut -d. -f1)
+        if [ "$major" -lt 8 ]; then
+            echo -e "${RED}✗ .NET 8.0 or higher required (found: $version)${NC}"
+            return 1
+        fi
         return 0
     else
-        echo -e "${YELLOW}⚠ Emscripten not found${NC}"
-        echo "  Install from: https://emscripten.org/docs/getting_started/downloads.html"
+        echo -e "${RED}✗ .NET not found${NC}"
         return 1
     fi
 }
 
-# Build as native executable first
-build_native() {
+# Install wasm-tools workload
+install_wasm_workload() {
     echo ""
-    echo -e "${BLUE}Building native executable...${NC}"
-    dotnet build "$PROJECT_DIR" -c "$BUILD_CONFIG" -o "$OUTPUT_DIR/native"
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ Native build successful${NC}"
+    echo -e "${BLUE}Checking WASM workload...${NC}"
+
+    # Try to list workloads
+    if dotnet workload list 2>/dev/null | grep -q "wasm-tools-net8"; then
+        echo -e "${GREEN}✓ wasm-tools-net8 workload already installed${NC}"
+        return 0
+    elif dotnet workload list 2>/dev/null | grep -q "wasm-tools"; then
+        echo -e "${GREEN}✓ wasm-tools workload already installed${NC}"
         return 0
     else
-        echo -e "${RED}✗ Native build failed${NC}"
-        return 1
+        echo -e "${YELLOW}WASM workload not found${NC}"
+        echo ""
+
+        # Check if dedicated installer script exists
+        if [ -f "./dotnet-wasm-install.sh" ]; then
+            echo "Using dedicated installer script..."
+            ./dotnet-wasm-install.sh
+            return $?
+        else
+            # Fallback to direct installation (try net8 first, then fallback)
+            echo -e "${YELLOW}Attempting direct installation...${NC}"
+            dotnet workload install wasm-tools-net8 2>/dev/null || dotnet workload install wasm-tools
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ WASM workload installed${NC}"
+                return 0
+            else
+                echo -e "${RED}✗ Failed to install WASM workload${NC}"
+                echo "Try running: ./dotnet-wasm-install.sh"
+                return 1
+            fi
+        fi
     fi
 }
 
-# Convert to WASM using Emscripten
-build_emscripten_wasm() {
-    if ! check_emscripten; then
-        echo -e "${YELLOW}Skipping Emscripten build${NC}"
-        return 1
-    fi
-
+# Publish to WASM
+build_wasm() {
     echo ""
-    echo -e "${BLUE}Compiling to WASM with Emscripten...${NC}"
+    echo -e "${BLUE}Publishing PhantomNebula for WebAssembly...${NC}"
+    echo "Configuration: $BUILD_CONFIG"
+    echo ""
 
-    local native_exe="$OUTPUT_DIR/native/PhantomNebula"
-
-    if [ ! -f "$native_exe" ]; then
-        echo -e "${RED}✗ Native executable not found: $native_exe${NC}"
-        return 1
-    fi
-
-    mkdir -p "$OUTPUT_DIR/emscripten"
-
-    emcc "$native_exe" -O3 \
-        -s WASM=1 \
-        -s ALLOW_MEMORY_GROWTH=1 \
-        -s USE_SDL=2 \
-        -s USE_OPENGL=1 \
-        -o "$OUTPUT_DIR/emscripten/game.html"
-
-    if [ $? -eq 0 ]; then
+    # Important: Use 'dotnet publish' command, NOT Visual Studio
+    # The RaylibWasm documentation explicitly warns against using VS publish feature
+    if dotnet publish "$PROJECT_DIR" -c "$BUILD_CONFIG" -r browser-wasm; then
         echo -e "${GREEN}✓ WASM build successful${NC}"
-        echo "  Output: $OUTPUT_DIR/emscripten/"
         return 0
     else
-        echo -e "${RED}✗ WASM compilation failed${NC}"
+        echo -e "${RED}✗ WASM build failed${NC}"
         return 1
     fi
 }
 
-# Create a Blazor WASM project template info
-create_blazor_template() {
+# Install dotnet serve tool if not available
+ensure_dotnet_serve() {
+    if ! command -v dotnet &> /dev/null; then
+        return 1
+    fi
+
+    if dotnet tool list -g 2>/dev/null | grep -q "dotnet-serve"; then
+        return 0
+    fi
+
     echo ""
-    echo -e "${BLUE}Creating Blazor WASM project template...${NC}"
+    echo -e "${YELLOW}Installing dotnet serve tool...${NC}"
 
-    mkdir -p "$OUTPUT_DIR/blazor"
-
-    cat > "$OUTPUT_DIR/blazor/index.html" << 'EOF'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Phantom Nebula</title>
-    <link href="css/app.css" rel="stylesheet" />
-</head>
-<body>
-    <div id="app">Loading...</div>
-    <script src="_framework/blazor.web.js"></script>
-</body>
-</html>
-EOF
-
-    cat > "$OUTPUT_DIR/blazor/README.md" << 'EOF'
-# Blazor WASM Port
-
-To port PhantomNebula to Blazor WebAssembly:
-
-1. Create new Blazor Web App:
-   ```bash
-   dotnet new blazor -n PhantomNebula.Wasm
-   ```
-
-2. Add dependencies:
-   ```bash
-   cd PhantomNebula.Wasm
-   dotnet add package Raylib-cs
-   ```
-
-3. Create Canvas-based renderer using HTML5 Canvas/WebGL
-   - Raylib-cs doesn't officially support WASM
-   - Alternative: Use SkiaSharp or manual WebGL bindings
-
-4. Main program structure:
-   ```csharp
-   // Components/GameCanvas.razor
-   @using System.Numerics
-   @implements IAsyncDisposable
-
-   <canvas @ref="canvasRef" width="1280" height="720"></canvas>
-
-   @code {
-       private ElementReference canvasRef;
-       // Game logic here
-   }
-   ```
-
-See: https://learn.microsoft.com/en-us/aspnet/core/blazor/
-EOF
-
-    echo -e "${GREEN}✓ Blazor template created at: $OUTPUT_DIR/blazor/${NC}"
+    if dotnet tool install -g dotnet-serve 2>/dev/null; then
+        echo -e "${GREEN}✓ dotnet serve installed${NC}"
+        return 0
+    else
+        echo -e "${YELLOW}⚠ Could not install dotnet serve (will fallback to other methods)${NC}"
+        return 1
+    fi
 }
 
-# Create a simple web server wrapper
+# Create web server script
 create_web_server() {
     echo ""
     echo -e "${BLUE}Creating web server launch script...${NC}"
 
+    mkdir -p "$OUTPUT_DIR"
+
     cat > "$OUTPUT_DIR/serve.sh" << 'EOF'
 #!/bin/bash
-# Simple web server for WASM build
-# Requires Python 3
+# Web server for WASM build
+# Supports multiple methods
 
-if command -v python3 &> /dev/null; then
-    echo "Starting web server on http://localhost:8000"
-    cd "$(dirname "$0")"
+# Get the directory where this script is located (bin/wasm/)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Go up to project root: bin/wasm -> bin -> project root
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Build the WASM directory path from project root
+WASM_DIR="$PROJECT_ROOT/PhantomNebula/bin/Release/net8.0/browser-wasm/AppBundle"
+
+if [ ! -d "$WASM_DIR" ]; then
+    echo "Error: WASM build not found"
+    echo "Expected location: PhantomNebula/bin/Release/net8.0/browser-wasm/AppBundle/"
+    echo "Run: ./build-wasm.sh first"
+    exit 1
+fi
+
+cd "$WASM_DIR"
+
+echo "Starting web server for Phantom Nebula WASM"
+echo "Open browser to: http://localhost:8000"
+echo ""
+
+# Try dotnet serve first (best option)
+if command -v dotnet serve &> /dev/null; then
+    echo "Using: dotnet serve"
+    dotnet serve -p 8000
+# Fall back to Python 3
+elif command -v python3 &> /dev/null; then
+    echo "Using: Python 3 http.server"
     python3 -m http.server 8000
+# Fall back to Python 2
 elif command -v python &> /dev/null; then
-    echo "Starting web server on http://localhost:8000"
-    cd "$(dirname "$0")"
+    echo "Using: Python 2 SimpleHTTPServer"
     python -m SimpleHTTPServer 8000
+# Fall back to Node.js
+elif command -v npx &> /dev/null; then
+    echo "Using: npx http-server"
+    npx http-server -p 8000
 else
-    echo "Error: Python not found. Install Python to run web server."
+    echo "Error: No suitable web server found"
+    echo ""
+    echo "Install one of the following:"
+    echo "  • .NET: dotnet tool install -g dotnet-serve"
+    echo "  • Python: https://www.python.org/downloads/"
+    echo "  • Node.js: https://nodejs.org/en/download/"
     exit 1
 fi
 EOF
 
     chmod +x "$OUTPUT_DIR/serve.sh"
-    echo -e "${GREEN}✓ Web server script created${NC}"
+    echo -e "${GREEN}✓ Web server script created at: $OUTPUT_DIR/serve.sh${NC}"
+}
+
+# Show build information
+show_info() {
+    echo ""
+    echo -e "${BLUE}═════════════════════════════════════════${NC}"
+    echo -e "${BLUE}  WASM Build Information${NC}"
+    echo -e "${BLUE}═════════════════════════════════════════${NC}"
+    echo ""
+    echo "Project: PhantomNebula"
+    echo "Build Config: $BUILD_CONFIG"
+    echo "Target Runtime: browser-wasm"
+    echo "Output: PhantomNebula/bin/$BUILD_CONFIG/net8.0/browser-wasm/AppBundle/"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Build completed! WASM artifacts are ready."
+    echo "  2. Run: $OUTPUT_DIR/serve.sh"
+    echo "  3. Open: http://localhost:8000 in your browser"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  - Use 'dotnet publish' (NOT Visual Studio publish)"
+    echo "  - .NET 8.0+ required for browser-wasm runtime"
+    echo "  - wasm-tools workload must be installed"
+    echo ""
 }
 
 # Main build process
 main() {
-    echo -e "${YELLOW}Build Configuration: $BUILD_CONFIG${NC}"
-    echo ""
-
-    # Try native build first
-    if ! build_native; then
+    # Check .NET installation
+    if ! check_dotnet; then
         exit 1
     fi
 
-    # Try Emscripten WASM conversion
-    if build_emscripten_wasm; then
-        create_web_server
+    # Install workload
+    if ! install_wasm_workload; then
+        exit 1
     fi
 
-    # Create Blazor template info
-    create_blazor_template
+    # Build WASM
+    if ! build_wasm; then
+        exit 1
+    fi
 
-    echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║  Build Complete!                       ║${NC}"
-    echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
-    echo ""
-    echo "Output location: $OUTPUT_DIR"
-    echo ""
-    echo "Next steps:"
-    echo "1. Emscripten WASM: Open $OUTPUT_DIR/emscripten/game.html in browser"
-    echo "2. Blazor WASM: Follow instructions in $OUTPUT_DIR/blazor/README.md"
-    echo "3. Web server: Run '$OUTPUT_DIR/serve.sh' to serve files locally"
-    echo ""
-    echo "Raylib-cs WASM Status:"
-    echo "  ⚠ Official WASM support is experimental"
-    echo "  → Consider using Emscripten or porting to Blazor"
-    echo "  → Or use JavaScript/WebGL alternatives like Babylon.js"
+    # Ensure dotnet serve is available (optional, but convenient)
+    ensure_dotnet_serve
+
+    # Create web server script
+    create_web_server
+
+    # Show information
+    show_info
 }
 
-main
+main "$@"
