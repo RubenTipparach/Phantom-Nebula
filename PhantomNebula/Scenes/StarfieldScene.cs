@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using System.Collections.Generic;
+using System.Linq;
 using Raylib_cs;
 using PhantomNebula.Core;
 using PhantomNebula.Game;
@@ -40,6 +41,9 @@ public class StarfieldScene
     // Targeting system
     private TargetingSystem targetingSystem;
     private TargetingUIRenderer targetingUIRenderer;
+
+    // Debug shader testing
+    private List<DebugShaderTestRenderer> debugShaderRenderers;
 
     // Directional light - loaded from config
     private Vector3 lightDirection;
@@ -140,6 +144,23 @@ public class StarfieldScene
         targetingSystem = new TargetingSystem();
         targetingUIRenderer = new TargetingUIRenderer();
 
+        // Initialize debug shader test renderers with explosion shader
+        debugShaderRenderers = new List<DebugShaderTestRenderer>();
+        Vector3 basePosition = new Vector3(3, -1, 0f);
+
+        // Create three explosion test quads at slightly offset positions
+        for (int i = 0; i < 10; i++)
+        {
+            var renderer = new DebugShaderTestRenderer(
+                "Shaders/Explosion.vs",
+                "Shaders/Explosion.fs",
+                "Resources/explosion.png"
+            );
+            renderer.SetPosition(basePosition + new Vector3(i * 0.1f, i * 0.2f, 0));
+            renderer.SetScale(0.5f);
+            debugShaderRenderers.Add(renderer);
+        }
+
         // Create camera controller orbiting the ship (not the planet)
         cameraController = new CameraController(ship);
 
@@ -182,16 +203,16 @@ public class StarfieldScene
         // Check for collisions with planet
         if (physicsWorld.IsColliding("Ship", "Planet"))
         {
-            ship.TakeDamage(50f * deltaTime); // 50 damage per second on collision
+            ship.TakeDamage(50000f); // 50 damage per second on collision
             // Spawn explosion at collision point
-            SpawnExplosionAtCollision(ship.Position, 1.0f, 2.5f);
+            SpawnExplosionAtCollision(ship.Position, 10, 1.0f, 2.5f);
         }
 
         if (physicsWorld.IsColliding("Satellite", "Planet"))
         {
             satellite.TakeDamage(50f * deltaTime); // 50 damage per second on collision
-            // Spawn explosion at collision point
-            SpawnExplosionAtCollision(satellite.Position, 0.5f, 1.5f);
+                                                   // Spawn explosion at collision point
+                                                   //SpawnExplosionAtCollision(satellite.Position, 10, 0.5f, 1.5f);
         }
 
         // Update explosions
@@ -227,16 +248,16 @@ public class StarfieldScene
         cameraController.Update(deltaTime, isMouseOverUI);
     }
 
-    private void SpawnExplosionAtCollision(Vector3 position, float startScale, float peakScale)
+    private void SpawnExplosionAtCollision(Vector3 position, float lifetime, float startScale, float peakScale)
     {
         // Spawn explosion at the given position with some randomness
         var random = new Random();
         Vector3 spawnPosition = position + new Vector3(
-            (float)(random.NextDouble() - 0.5) * 2.0f,
-            (float)(random.NextDouble() - 0.5) * 1.0f,
-            (float)(random.NextDouble() - 0.5) * 2.0f
+            (float)(random.NextDouble() - 0.5) * 1.0f + 2,
+            (float)(random.NextDouble() - 0.5) * 1.0f - 2,
+            (float)(random.NextDouble() - 0.5) * 1.0f + 2
         );
-        explosions.Add(new Explosion(spawnPosition, 1.2f, startScale, peakScale));
+        explosions.Add(new Explosion(spawnPosition, lifetime, startScale, peakScale));
     }
 
     private void DrawShipHealthBar(int x, int y)
@@ -358,6 +379,18 @@ public class StarfieldScene
 
     private void HandleInput()
     {
+        // Handle debug actions if enabled
+        if (GameConfig.Instance.Debug.DebugActions.Enabled)
+        {
+            KeyboardKey spawnExplosionKey = GameConfig.GetKeyFromString(GameConfig.Instance.Debug.DebugActions.SpawnExplosionOnShip);
+            if (Raylib.IsKeyPressed(spawnExplosionKey))
+            {
+                // Spawn explosion at ship position
+                SpawnExplosionAtCollision(ship.Position, 5, 5.0f, 10.0f);
+                Console.WriteLine("[Debug] Spawned explosion on ship via debug action");
+            }
+        }
+
         // Arrow keys to rotate light direction for testing sun alignment (only in debug mode)
         if (GameConfig.Instance.EnableLightDirectionControls)
         {
@@ -502,11 +535,6 @@ public class StarfieldScene
             // Draw speed lines around ship
             speedLines.Draw(shipForward);
 
-            // Draw explosions
-            for (int i = 0; i < explosions.Count; i++)
-            {
-                explosionRenderer.RenderExplosion(explosions[i], camera);
-            }
 
             // Draw physics debug colliders (if enabled in config)
             if (GameConfig.Instance.Debug.DebugPhysics)
@@ -525,6 +553,25 @@ public class StarfieldScene
             {
                 DrawShipDebugLines();
             }
+
+            // Draw explosions last with additive blending (on top of everything)
+            // Sort by distance from camera (back to front) for proper layering with additive blend
+            BeginBlendMode(BlendMode.Additive);
+            // var sortedExplosions = explosions
+            //     .OrderByDescending(e => Vector3.Distance(e.Position, camera.Position))
+            //     .ToList();
+            for (int i = 0; i < explosions.Count; i++)
+            {
+                explosionRenderer.RenderExplosion(explosions[i], camera);
+            }
+
+            // Draw debug shader test quads with explosion shader
+            foreach (var renderer in debugShaderRenderers)
+            {
+                renderer.Draw();
+            }
+
+            EndBlendMode();
 
             // Draw health bars for ship and satellite (before ending 3D mode so they're in 3D space)
             int screenWidth = GetScreenWidth();
@@ -641,7 +688,8 @@ public class StarfieldScene
 
         // Draw targeting UI (only if target is in front of camera)
         Camera3D camera = cameraController.GetCamera();
-        targetingUIRenderer.Draw(targetingSystem, ship.Position, camera);
+        List<ITarget> allTargets = new() { satellite };
+        targetingUIRenderer.Draw(targetingSystem, ship.Position, camera, allTargets);
 
         // Speed slider on right side (vertical)
         float sliderWidth = 20;
@@ -729,6 +777,10 @@ public class StarfieldScene
         satellite.Dispose();
         physicsWorld.Dispose();
         explosionRenderer.Unload();
+        foreach (var renderer in debugShaderRenderers)
+        {
+            renderer.Unload();
+        }
         explosions.Clear();
         gifRecorder.Dispose();
         Raylib.UnloadRenderTexture(sceneTexture);

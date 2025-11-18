@@ -14,7 +14,7 @@ out vec4 fragColor;
 
 void main()
 {
-    // Apply MVP transformation (scaling is handled by the transformation matrix in C#)
+    // Basic pass-through - no transformation
     gl_Position = mvp * vec4(vertexPosition, 1.0);
 
     // Pass texture coordinates and color to fragment shader

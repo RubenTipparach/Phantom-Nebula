@@ -33,7 +33,12 @@ namespace PhantomNebula.Game
         public float PeakScale { get; private set; }
 
         /// <summary>
-        /// Current scale of the explosion (grows then fades out).
+        /// Secondary growth scale that continues expanding slowly through lifetime (25% of peak).
+        /// </summary>
+        public float SecondaryGrowthScale { get; private set; } = 0.25f;
+
+        /// <summary>
+        /// Current scale of the explosion (fast growth then slow expansion).
         /// </summary>
         public float CurrentScale
         {
@@ -41,23 +46,18 @@ namespace PhantomNebula.Game
             {
                 float normalizedLifetime = Lifetime / MaxLifetime;
 
-                // Scale up in first 30% of lifetime, then stay at peak for a bit, then shrink
-                if (normalizedLifetime < 0.3f)
+                // Fast growth phase (0-20%): grow from start scale to peak scale
+                if (normalizedLifetime < 0.2f)
                 {
-                    // Grow phase (0-30%)
-                    float growProgress = normalizedLifetime / 0.3f;
+                    float growProgress = normalizedLifetime / 0.2f;
                     return StartScale + (PeakScale - StartScale) * growProgress;
-                }
-                else if (normalizedLifetime < 0.7f)
-                {
-                    // Hold phase (30-70%)
-                    return PeakScale;
                 }
                 else
                 {
-                    // Shrink phase (70-100%)
-                    float shrinkProgress = (normalizedLifetime - 0.7f) / 0.3f;
-                    return PeakScale * (1.0f - shrinkProgress);
+                    // Slow growth phase (20-100%): gradually expand from peak to peak + secondary growth
+                    float slowGrowProgress = (normalizedLifetime - 0.2f) / 0.8f;
+                    float secondaryMax = PeakScale + (PeakScale * SecondaryGrowthScale);
+                    return PeakScale + (secondaryMax - PeakScale) * slowGrowProgress;
                 }
             }
         }
@@ -108,12 +108,12 @@ namespace PhantomNebula.Game
         /// Creates a new explosion effect.
         /// </summary>
         /// <param name="position">World position to spawn at</param>
-        /// <param name="maxLifetime">How long the explosion lasts (default 1.5 seconds)</param>
+        /// <param name="maxLifetime">How long the explosion lasts (default 6.5 seconds)</param>
         /// <param name="startScale">Initial scale (default 0.5)</param>
         /// <param name="peakScale">Maximum scale reached (default 3.0)</param>
         public Explosion(
             Vector3 position,
-            float maxLifetime = 1.5f,
+            float maxLifetime = 10f,
             float startScale = 0.5f,
             float peakScale = 3.0f)
         {

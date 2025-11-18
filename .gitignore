@@ -14,3 +14,5 @@ raylib-cs/
 PhantomNebula/bin/
 PhantomNebula/obj/
 PhantomNebula/Recordings
+# Prevent root-level build artifacts and configs
+/game_config.yaml

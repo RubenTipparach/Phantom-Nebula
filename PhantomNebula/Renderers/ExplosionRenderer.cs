@@ -45,7 +45,7 @@ public class ExplosionRenderer
         }
 
         // Create billboard mesh (a simple quad)
-        billboardMesh = GenMeshPlane(1.0f, 1.0f, 1, 1);
+        billboardMesh = GenMeshPlane(1.0f, 1.0f, 5, 5);
 
         // Try to load explosion shader
         try
@@ -88,39 +88,9 @@ public class ExplosionRenderer
         if (!explosion.IsAlive)
             return;
 
-        // Get camera direction vectors for billboard orientation
-        Vector3 cameraToExplosion = explosion.Position - camera.Position;
-        float distanceToCamera = cameraToExplosion.Length();
-
-        // Avoid division by zero
-        if (distanceToCamera < 0.001f)
-            return;
-
-        // Calculate camera-aligned right and up vectors
-        Vector3 cameraRight = Vector3.Normalize(Vector3.Cross(camera.Up, cameraToExplosion));
-        Vector3 cameraUp = Vector3.Normalize(Vector3.Cross(cameraRight, cameraToExplosion));
-
-        // Billboard size based on explosion scale
+        // Create transformation matrix with scale and position
         float size = explosion.CurrentScale;
-
-        // Build transformation matrix for billboard
-        // Position the quad centered at explosion.Position, facing the camera
-        Matrix4x4 transform = Matrix4x4.Identity;
-        transform.M11 = cameraRight.X * size;
-        transform.M12 = cameraRight.Y * size;
-        transform.M13 = cameraRight.Z * size;
-
-        transform.M21 = cameraUp.X * size;
-        transform.M22 = cameraUp.Y * size;
-        transform.M23 = cameraUp.Z * size;
-
-        transform.M31 = cameraToExplosion.X / distanceToCamera;
-        transform.M32 = cameraToExplosion.Y / distanceToCamera;
-        transform.M33 = cameraToExplosion.Z / distanceToCamera;
-
-        transform.M41 = explosion.Position.X;
-        transform.M42 = explosion.Position.Y;
-        transform.M43 = explosion.Position.Z;
+        Matrix4x4 transform = Matrix4x4.CreateScale(size) * Matrix4x4.CreateTranslation(explosion.Position);
 
         // Get the color for this frame
         Color explosionColor = GetExplosionColor(explosion);
@@ -139,7 +109,7 @@ public class ExplosionRenderer
         }
 
         // Draw the billboard mesh
-        DrawMesh(billboardMesh, billboardMaterial, transform);
+        DrawMesh(billboardMesh, billboardMaterial, Matrix4x4.Transpose(transform));
     }
 
     /// <summary>

@@ -25,8 +25,8 @@ public class GifRecorder
     private int frameCount = 0;
     private int screenWidth = 1280;
     private int screenHeight = 720;
-    private int captureWidth = 320;  // 320x160 resolution
-    private int captureHeight = 160; // 320x160 resolution
+    private int captureWidth = 640;  // 640x320 resolution
+    private int captureHeight = 320; // 640x320 resolution
     private const int MAX_FRAMES = 240; // 10 seconds at 24fps
     private static int recordingIndex = 0;
     private Task? savingTask = null;

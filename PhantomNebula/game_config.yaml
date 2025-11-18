@@ -1,6 +1,9 @@
 debug:
   debugMode: false
   debugPhysics: true
+  debugActions:
+    enabled: true
+    spawnExplosionOnShip: X
 
 models:
   ship:

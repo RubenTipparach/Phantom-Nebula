@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Numerics;
+using Raylib_cs;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -29,12 +30,22 @@ public class TransformConfig
 }
 
 /// <summary>
+/// Debug action keybindings
+/// </summary>
+public class DebugActionsConfig
+{
+    public bool Enabled { get; set; } = false;
+    public string SpawnExplosionOnShip { get; set; } = "X";
+}
+
+/// <summary>
 /// Debug settings
 /// </summary>
 public class DebugConfig
 {
     public bool DebugMode { get; set; } = false;
     public bool DebugPhysics { get; set; } = false;
+    public DebugActionsConfig DebugActions { get; set; } = new();
 }
 
 /// <summary>
@@ -186,5 +197,29 @@ public class GameConfig
         {
             Console.WriteLine($"[GameConfig] Error saving config: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Convert string key name to Raylib KeyboardKey
+    /// </summary>
+    public static KeyboardKey GetKeyFromString(string keyName)
+    {
+        return keyName.ToUpper() switch
+        {
+            "X" => KeyboardKey.X,
+            "Z" => KeyboardKey.Z,
+            "C" => KeyboardKey.C,
+            "V" => KeyboardKey.V,
+            "B" => KeyboardKey.B,
+            "N" => KeyboardKey.N,
+            "M" => KeyboardKey.M,
+            "F1" => KeyboardKey.F1,
+            "F2" => KeyboardKey.F2,
+            "F3" => KeyboardKey.F3,
+            "F4" => KeyboardKey.F4,
+            "F5" => KeyboardKey.F5,
+            "SPACE" => KeyboardKey.Space,
+            _ => KeyboardKey.X // Default fallback
+        };
     }
 }

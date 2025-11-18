@@ -1,4 +1,6 @@
 using Raylib_cs;
+using System;
+using System.Collections.Generic;
 using System.Numerics;
 using PhantomNebula.Core;
 using PhantomNebula.Game;
@@ -15,62 +17,63 @@ public class TargetingUIRenderer
     private const float CORNER_LENGTH = 15f;
 
     /// <summary>
-    /// Renders the targeting UI for hovered and selected targets.
-    /// Only draws UI if the target is in front of the camera.
+    /// Renders the targeting UI for all targets, showing bounding boxes for all valid targets.
+    /// Only draws UI if targets are in front of the camera.
     /// </summary>
-    public void Draw(TargetingSystem targetingSystem, Vector3 playerPosition, Camera3D camera)
+    public void Draw(TargetingSystem targetingSystem, Vector3 playerPosition, Camera3D camera, List<ITarget> allTargets)
     {
+        // Calculate camera forward vector once
+        Vector3 cameraForward = Vector3.Normalize(camera.Target - camera.Position);
+
         // Get the current target (hovered or selected)
         ITarget? currentTarget = targetingSystem.HoveredTarget ?? targetingSystem.SelectedTarget;
 
-        // Check if target is behind the camera
-        if (currentTarget != null)
+        // Draw all targets with their bounding boxes
+        foreach (ITarget target in allTargets)
         {
-            Vector3 dirToTarget = currentTarget.Position - camera.Position;
-            // If dot product of direction and camera forward is negative, target is behind
-            Vector3 cameraForward = Vector3.Normalize(camera.Target - camera.Position);
+            // Skip dead targets
+            if (target.IsDead)
+                continue;
+
+            // Get target screen position and bounds
+            Vector2 targetScreenPos = GetWorldToScreen(target.Position, camera);
+            const float boxWidth = 80f;
+            const float boxHeight = 100f;
+
+            Rectangle screenBounds = new(
+                targetScreenPos.X - boxWidth / 2,
+                targetScreenPos.Y - boxHeight / 2,
+                boxWidth,
+                boxHeight
+            );
+
+            // Check if target is behind the camera
+            Vector3 dirToTarget = target.Position - camera.Position;
             if (Vector3.Dot(dirToTarget, cameraForward) < 0)
             {
-                // Target is behind camera, don't draw UI
-                return;
+                // Target is behind camera, skip
+                continue;
             }
-        }
 
-        // Determine if we should show highlight (hovered or selected)
-        bool isHighlighted = targetingSystem.HoveredTarget != null || targetingSystem.SelectedTarget != null;
+            // Determine if this target is hovered or selected
+            bool isHighlighted = target == currentTarget;
 
-        // Always draw target bounding box if target exists (dark blue, or bright cyan if highlighted)
-        if (targetingSystem.TargetScreenBounds.Width > 0)
-        {
             if (isHighlighted)
             {
                 // Draw bright cyan highlight when hovered or selected
-                DrawHighlightedTargetBox(targetingSystem);
+                DrawHighlightedTargetBoxForTarget(target, screenBounds, playerPosition);
             }
             else
             {
                 // Draw dark blue box when not highlighted
-                DrawTargetBox(targetingSystem);
+                DrawTargetBoxForTarget(target, screenBounds, playerPosition);
             }
-        }
 
-        // Draw health bar above target box if hovered or selected
-        if (targetingSystem.TargetScreenBounds.Width > 0 && isHighlighted)
-        {
-            ITarget? target = targetingSystem.HoveredTarget ?? targetingSystem.SelectedTarget;
-            if (target != null)
+            // Draw health bar and name above target if hovered or selected
+            if (isHighlighted)
             {
-                DrawTargetHealthBar(target, targetingSystem.TargetScreenBounds);
-            }
-        }
-
-        // Draw target name above health bar if hovered or selected
-        if (targetingSystem.TargetScreenBounds.Width > 0 && isHighlighted)
-        {
-            ITarget? target = targetingSystem.HoveredTarget ?? targetingSystem.SelectedTarget;
-            if (target != null)
-            {
-                DrawTargetName(target, targetingSystem.TargetScreenBounds);
+                DrawTargetHealthBar(target, screenBounds);
+                DrawTargetName(target, screenBounds);
             }
         }
     }
@@ -78,16 +81,17 @@ public class TargetingUIRenderer
     /// <summary>
     /// Draws the target bounding box in dark blue (when not highlighted).
     /// </summary>
-    private void DrawTargetBox(TargetingSystem targetingSystem)
+    private void DrawTargetBoxForTarget(ITarget target, Rectangle bounds, Vector3 playerPosition)
     {
-        Rectangle bounds = targetingSystem.TargetScreenBounds;
         Color boxColor = new(25, 50, 100, 200); // Dark blue
 
         // Draw corner brackets
         DrawTargetCorners(bounds, boxColor);
 
         // Draw distance text at the bottom of the box
-        string distanceText = $"{targetingSystem.TargetDistance:F1}m";
+        Vector3 dirToTarget = target.Position - playerPosition;
+        float distance = dirToTarget.Length();
+        string distanceText = $"{distance:F1}m";
         int textWidth = MeasureText(distanceText, 12);
         int textX = (int)(bounds.X + bounds.Width / 2 - textWidth / 2);
         int textY = (int)(bounds.Y + bounds.Height + 5);
@@ -98,16 +102,17 @@ public class TargetingUIRenderer
     /// <summary>
     /// Draws the target bounding box in bright cyan (when highlighted/hovered/selected).
     /// </summary>
-    private void DrawHighlightedTargetBox(TargetingSystem targetingSystem)
+    private void DrawHighlightedTargetBoxForTarget(ITarget target, Rectangle bounds, Vector3 playerPosition)
     {
-        Rectangle bounds = targetingSystem.TargetScreenBounds;
         Color boxColor = new(0, 255, 255, 255); // Bright cyan
 
         // Draw corner brackets
         DrawTargetCorners(bounds, boxColor);
 
         // Draw distance text at the bottom of the box
-        string distanceText = $"{targetingSystem.TargetDistance:F1}m";
+        Vector3 dirToTarget = target.Position - playerPosition;
+        float distance = dirToTarget.Length();
+        string distanceText = $"{distance:F1}m";
         int textWidth = MeasureText(distanceText, 12);
         int textX = (int)(bounds.X + bounds.Width / 2 - textWidth / 2);
         int textY = (int)(bounds.Y + bounds.Height + 5);
@@ -148,11 +153,9 @@ public class TargetingUIRenderer
     /// </summary>
     private void DrawSelectedTargetInfo(TargetingSystem targetingSystem, Vector3 playerPosition)
     {
-        ITarget target = targetingSystem.SelectedTarget;
-
-        // Convert target position to screen space
-        Vector2 targetScreenPos = GetWorldToScreen(target.Position, new Camera3D());
-        // Note: We need camera for proper conversion, but we'll calculate it differently below
+        ITarget? target = targetingSystem.SelectedTarget;
+        if (target == null)
+            return;
 
         // For selected target, draw info above where it would be on screen
         // We'll place it at a fixed offset from where the player "sees" it
