@@ -37,8 +37,8 @@ public class PhysicsDebugRenderer
                 _ => Color.White
             };
 
-            // Draw the collider shape
-            collider.Shape.Draw(collider.Position, collider.Scale, color);
+            // Draw the collider shape with rotation
+            collider.Shape.Draw(collider.Position, collider.Scale, collider.Rotation, color);
         }
     }
 }

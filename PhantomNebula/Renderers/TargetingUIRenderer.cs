@@ -16,9 +16,26 @@ public class TargetingUIRenderer
 
     /// <summary>
     /// Renders the targeting UI for hovered and selected targets.
+    /// Only draws UI if the target is in front of the camera.
     /// </summary>
-    public void Draw(TargetingSystem targetingSystem, Vector3 playerPosition)
+    public void Draw(TargetingSystem targetingSystem, Vector3 playerPosition, Camera3D camera)
     {
+        // Get the current target (hovered or selected)
+        ITarget? currentTarget = targetingSystem.HoveredTarget ?? targetingSystem.SelectedTarget;
+
+        // Check if target is behind the camera
+        if (currentTarget != null)
+        {
+            Vector3 dirToTarget = currentTarget.Position - camera.Position;
+            // If dot product of direction and camera forward is negative, target is behind
+            Vector3 cameraForward = Vector3.Normalize(camera.Target - camera.Position);
+            if (Vector3.Dot(dirToTarget, cameraForward) < 0)
+            {
+                // Target is behind camera, don't draw UI
+                return;
+            }
+        }
+
         // Determine if we should show highlight (hovered or selected)
         bool isHighlighted = targetingSystem.HoveredTarget != null || targetingSystem.SelectedTarget != null;
 

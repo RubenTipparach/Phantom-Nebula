@@ -5,9 +5,8 @@ using System.Numerics;
 namespace PhantomNebula.Physics;
 
 /// <summary>
-/// Simplified wrapper for physics colliders (debug visualization)
-/// Stores collider information for rendering wireframes
-/// Full BepuPhysics integration can be added later when needed
+/// Physics world for collision detection and visualization
+/// Uses manual collision checks for now - BepuPhysics integration for later
 /// </summary>
 public class PhysicsWorld : IDisposable
 {
@@ -21,6 +20,7 @@ public class PhysicsWorld : IDisposable
         public string Name { get; set; } = "";
         public Vector3 Position { get; set; }
         public Vector3 Scale { get; set; }
+        public Quaternion Rotation { get; set; } = Quaternion.Identity;
         public ColliderShape Shape { get; set; } = new SphereCollider(1f);
         public ColliderType Type { get; set; }
 
@@ -31,6 +31,7 @@ public class PhysicsWorld : IDisposable
             Name = name;
             Position = position;
             Scale = scale;
+            Rotation = Quaternion.Identity;
             Shape = shape;
             Type = type;
         }
@@ -69,6 +70,17 @@ public class PhysicsWorld : IDisposable
         if (colliders.TryGetValue(name, out var collider))
         {
             collider.Position = position;
+        }
+    }
+
+    /// <summary>
+    /// Update a collider's rotation
+    /// </summary>
+    public void UpdateColliderRotation(string name, Quaternion rotation)
+    {
+        if (colliders.TryGetValue(name, out var collider))
+        {
+            collider.Rotation = rotation;
         }
     }
 
@@ -154,7 +166,7 @@ public class PhysicsWorld : IDisposable
     }
 
     /// <summary>
-    /// Check collision between two boxes (AABB)
+    /// Check collision between two boxes (AABB - simple check, doesn't account for rotation)
     /// </summary>
     private bool CheckBoxBoxCollision(BoxCollider b1, ColliderData d1, BoxCollider b2, ColliderData d2)
     {
@@ -175,11 +187,11 @@ public class PhysicsWorld : IDisposable
     }
 
     /// <summary>
-    /// Step the physics simulation (placeholder for future BepuPhysics integration)
+    /// Step the physics simulation (placeholder)
     /// </summary>
     public void Update(float deltaTime)
     {
-        // TODO: Implement actual physics simulation with BepuPhysics
+        // TODO: Implement actual physics simulation with BepuPhysics when needed
         // For now, this is a placeholder for collision detection
     }
 
@@ -194,7 +206,7 @@ public class PhysicsWorld : IDisposable
 /// </summary>
 public abstract class ColliderShape
 {
-    public abstract void Draw(Vector3 position, Vector3 scale, Raylib_cs.Color color);
+    public abstract void Draw(Vector3 position, Vector3 scale, Quaternion rotation, Raylib_cs.Color color);
 }
 
 /// <summary>
@@ -213,7 +225,7 @@ public class BoxCollider : ColliderShape
         Depth = depth;
     }
 
-    public override void Draw(Vector3 position, Vector3 scale, Raylib_cs.Color color)
+    public override void Draw(Vector3 position, Vector3 scale, Quaternion rotation, Raylib_cs.Color color)
     {
         float w = Width * scale.X;
         float h = Height * scale.Y;
@@ -225,15 +237,21 @@ public class BoxCollider : ColliderShape
 
         Vector3[] corners = new[]
         {
-            position + new Vector3(-halfW, -halfH, -halfD),
-            position + new Vector3(halfW, -halfH, -halfD),
-            position + new Vector3(halfW, halfH, -halfD),
-            position + new Vector3(-halfW, halfH, -halfD),
-            position + new Vector3(-halfW, -halfH, halfD),
-            position + new Vector3(halfW, -halfH, halfD),
-            position + new Vector3(halfW, halfH, halfD),
-            position + new Vector3(-halfW, halfH, halfD),
+            new Vector3(-halfW, -halfH, -halfD),
+            new Vector3(halfW, -halfH, -halfD),
+            new Vector3(halfW, halfH, -halfD),
+            new Vector3(-halfW, halfH, -halfD),
+            new Vector3(-halfW, -halfH, halfD),
+            new Vector3(halfW, -halfH, halfD),
+            new Vector3(halfW, halfH, halfD),
+            new Vector3(-halfW, halfH, halfD),
         };
+
+        // Apply rotation to each corner
+        for (int i = 0; i < corners.Length; i++)
+        {
+            corners[i] = Vector3.Transform(corners[i], rotation) + position;
+        }
 
         // Bottom face
         Raylib_cs.Raylib.DrawLine3D(corners[0], corners[1], color);
@@ -267,7 +285,7 @@ public class SphereCollider : ColliderShape
         Radius = radius;
     }
 
-    public override void Draw(Vector3 position, Vector3 scale, Raylib_cs.Color color)
+    public override void Draw(Vector3 position, Vector3 scale, Quaternion rotation, Raylib_cs.Color color)
     {
         float radius = Radius * scale.X;
 
@@ -286,29 +304,28 @@ public class SphereCollider : ColliderShape
                 float lon2 = (float)(2 * Math.PI * (lon + 1) / longitudeSegments);
 
                 // Calculate 4 points of the quad
-                Vector3 p1 = position + new Vector3(
+                Vector3 p1 = new Vector3(
                     radius * (float)(Math.Sin(lat1) * Math.Cos(lon1)),
                     radius * (float)Math.Cos(lat1),
                     radius * (float)(Math.Sin(lat1) * Math.Sin(lon1))
                 );
 
-                Vector3 p2 = position + new Vector3(
+                Vector3 p2 = new Vector3(
                     radius * (float)(Math.Sin(lat1) * Math.Cos(lon2)),
                     radius * (float)Math.Cos(lat1),
                     radius * (float)(Math.Sin(lat1) * Math.Sin(lon2))
                 );
 
-                Vector3 p3 = position + new Vector3(
+                Vector3 p3 = new Vector3(
                     radius * (float)(Math.Sin(lat2) * Math.Cos(lon1)),
                     radius * (float)Math.Cos(lat2),
                     radius * (float)(Math.Sin(lat2) * Math.Sin(lon1))
                 );
 
-                Vector3 p4 = position + new Vector3(
-                    radius * (float)(Math.Sin(lat2) * Math.Cos(lon2)),
-                    radius * (float)Math.Cos(lat2),
-                    radius * (float)(Math.Sin(lat2) * Math.Sin(lon2))
-                );
+                // Apply rotation and position
+                p1 = Vector3.Transform(p1, rotation) + position;
+                p2 = Vector3.Transform(p2, rotation) + position;
+                p3 = Vector3.Transform(p3, rotation) + position;
 
                 // Draw edges of the quad
                 Raylib_cs.Raylib.DrawLine3D(p1, p2, color);
@@ -332,13 +349,13 @@ public class CapsuleCollider : ColliderShape
         Radius = radius;
     }
 
-    public override void Draw(Vector3 position, Vector3 scale, Raylib_cs.Color color)
+    public override void Draw(Vector3 position, Vector3 scale, Quaternion rotation, Raylib_cs.Color color)
     {
         float halfLen = HalfLength * scale.Y;
         float radius = Radius * scale.X;
 
-        Vector3 topCenter = position + Vector3.UnitY * halfLen;
-        Vector3 bottomCenter = position - Vector3.UnitY * halfLen;
+        Vector3 topCenter = Vector3.Transform(Vector3.UnitY * halfLen, rotation) + position;
+        Vector3 bottomCenter = Vector3.Transform(-Vector3.UnitY * halfLen, rotation) + position;
 
         Raylib_cs.Raylib.DrawSphere(topCenter, radius, color);
         Raylib_cs.Raylib.DrawSphere(bottomCenter, radius, color);
@@ -349,9 +366,13 @@ public class CapsuleCollider : ColliderShape
             float angle1 = (float)(i * 2 * Math.PI / segments);
             float angle2 = (float)((i + 1) * 2 * Math.PI / segments);
 
-            Vector3 p1 = new Vector3((float)Math.Cos(angle1) * radius, halfLen, (float)Math.Sin(angle1) * radius) + position;
-            Vector3 p2 = new Vector3((float)Math.Cos(angle2) * radius, halfLen, (float)Math.Sin(angle2) * radius) + position;
-            Vector3 p3 = new Vector3((float)Math.Cos(angle1) * radius, -halfLen, (float)Math.Sin(angle1) * radius) + position;
+            Vector3 p1 = new((float)Math.Cos(angle1) * radius, halfLen, (float)Math.Sin(angle1) * radius);
+            Vector3 p2 = new((float)Math.Cos(angle2) * radius, halfLen, (float)Math.Sin(angle2) * radius);
+            Vector3 p3 = new((float)Math.Cos(angle1) * radius, -halfLen, (float)Math.Sin(angle1) * radius);
+
+            p1 = Vector3.Transform(p1, rotation) + position;
+            p2 = Vector3.Transform(p2, rotation) + position;
+            p3 = Vector3.Transform(p3, rotation) + position;
 
             Raylib_cs.Raylib.DrawLine3D(p1, p2, color);
             Raylib_cs.Raylib.DrawLine3D(p1, p3, color);

@@ -107,19 +107,23 @@ public class StarfieldScene
         );
 
         // Add ship collider (kinematic)
+        // Ship model dimensions: width=5.9, height=1.4, depth=8.7
+        // With 0.2 scale: 1.18, 0.28, 1.74
         physicsWorld.AddKinematicCollider(
             "Ship",
             new Vector3(config.ShipPositionX, config.ShipPositionY, config.ShipPositionZ),
             new Vector3(config.ShipScale, config.ShipScale, config.ShipScale),
-            new BoxCollider(2.5f, 1.5f, 5.0f) // Approximate ship dimensions (larger for visibility)
+            new BoxCollider(5.9f, 1.4f, 10f) // Ship exact dimensions from OBJ
         );
 
         // Add satellite collider (kinematic)
+        // Satellite model dimensions: width=3.0, height=7.4, depth=3.0
+        // With 0.5 scale: 1.49, 3.72, 1.49
         physicsWorld.AddKinematicCollider(
             "Satellite",
             new Vector3(config.SatellitePositionX, config.SatellitePositionY, config.SatellitePositionZ),
             new Vector3(config.SatelliteScale, config.SatelliteScale, config.SatelliteScale),
-            new BoxCollider(2.5f, 2.5f, 2.5f) // Box collider for satellite
+            new BoxCollider(3.0f, 7.4f, 3.0f) // Satellite exact dimensions from OBJ
         );
 
         // Create physics debug renderer
@@ -169,9 +173,11 @@ public class StarfieldScene
         // Update physics world
         physicsWorld.Update(deltaTime);
 
-        // Sync collider positions with game objects
+        // Sync collider positions and rotations with game objects
         physicsWorld.UpdateColliderPosition("Ship", ship.Position);
         physicsWorld.UpdateColliderPosition("Satellite", satellite.Position);
+        physicsWorld.UpdateColliderRotation("Ship", ship.Rotation);
+        physicsWorld.UpdateColliderRotation("Satellite", satellite.Rotation);
 
         // Check for collisions with planet
         if (physicsWorld.IsColliding("Ship", "Planet"))
@@ -633,8 +639,9 @@ public class StarfieldScene
         // Ship health bar at top left
         DrawShipHealthBar(20, 45);
 
-        // Draw targeting UI
-        targetingUIRenderer.Draw(targetingSystem, ship.Position);
+        // Draw targeting UI (only if target is in front of camera)
+        Camera3D camera = cameraController.GetCamera();
+        targetingUIRenderer.Draw(targetingSystem, ship.Position, camera);
 
         // Speed slider on right side (vertical)
         float sliderWidth = 20;
