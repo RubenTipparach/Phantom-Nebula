@@ -129,6 +129,20 @@ ensure_dotnet_serve() {
     fi
 }
 
+# Copy index.html to AppBundle if it exists in project root
+copy_index_html() {
+    local project_root="."
+    local index_file="$project_root/index.html"
+    local appbundle_dir="$PROJECT_DIR/bin/$BUILD_CONFIG/net8.0/browser-wasm/AppBundle"
+
+    if [ -f "$index_file" ] && [ -d "$appbundle_dir" ]; then
+        echo ""
+        echo -e "${BLUE}Copying index.html to AppBundle...${NC}"
+        cp "$index_file" "$appbundle_dir/index.html"
+        echo -e "${GREEN}✓ index.html copied${NC}"
+    fi
+}
+
 # Create web server script
 create_web_server() {
     echo ""
@@ -235,6 +249,9 @@ main() {
 
     # Ensure dotnet serve is available (optional, but convenient)
     ensure_dotnet_serve
+
+    # Copy index.html to AppBundle
+    copy_index_html
 
     # Create web server script
     create_web_server

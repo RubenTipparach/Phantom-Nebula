@@ -6,10 +6,22 @@
     <RollForward>Major</RollForward>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- WASM Configuration (based on working RaylibWasm project) -->
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <WasmMainJSPath>main.js</WasmMainJSPath>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <EnableAggressiveTrimming>true</EnableAggressiveTrimming>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <WasmBuildNative>true</WasmBuildNative>
+    <WasmNativeStrip>true</WasmNativeStrip>
+    <WasmAllowUndefinedSymbols>true</WasmAllowUndefinedSymbols>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Raylib-cs" Version="6.0.0" />
+    <PackageReference Include="Raylib-cs" Version="7.0.0" />
     <PackageReference Include="BepuPhysics" Version="2.4.0" />
     <PackageReference Include="BepuUtilities" Version="2.4.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
@@ -24,5 +36,28 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!-- WASM-specific file deployment -->
+  <ItemGroup>
+    <WasmExtraFilesToDeploy Include="index.html" />
+    <WasmExtraFilesToDeploy Include="main.js" />
+    <NativeFileReference Include="raylib.a" />
+    <!-- Include Resources but exclude macOS system files -->
+    <WasmFilesToIncludeInFileSystem Include="Resources\**\*.*" Exclude="Resources\**\.DS_Store" TargetPath="Resources\%(RecursiveDir)\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- Emscripten build flags -->
+  <PropertyGroup>
+    <EmccFlags>-sUSE_GLFW=3 -O3 -lexports.js</EmccFlags>
+  </PropertyGroup>
+
+  <!-- Trimming configuration to preserve JSExport methods -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="PhantomNebula" />
+    <TrimmerRootDescriptor Include="TrimmerRoots.xml" />
+  </ItemGroup>
+
+
+
 
 </Project>
