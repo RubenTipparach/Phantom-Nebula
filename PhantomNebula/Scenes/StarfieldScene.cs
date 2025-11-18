@@ -113,7 +113,7 @@ public class StarfieldScene
             "Ship",
             new Vector3(config.ShipPositionX, config.ShipPositionY, config.ShipPositionZ),
             new Vector3(config.ShipScale, config.ShipScale, config.ShipScale),
-            new BoxCollider(5.9f, 1.4f, 10f) // Ship exact dimensions from OBJ
+            new BoxCollider(5.9f, 1.4f, 10f) // Ship exact dimensions from OBJ test
         );
 
         // Add satellite collider (kinematic)
