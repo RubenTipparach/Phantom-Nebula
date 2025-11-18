@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Collections.Generic;
 using Raylib_cs;
 using PhantomNebula.Core;
 using PhantomNebula.Game;
@@ -31,6 +32,14 @@ public class StarfieldScene
 
     // Health bar rendering
     private HealthBarRenderer healthBarRenderer;
+
+    // Explosion effects
+    private ExplosionRenderer explosionRenderer;
+    private List<Explosion> explosions;
+
+    // Targeting system
+    private TargetingSystem targetingSystem;
+    private TargetingUIRenderer targetingUIRenderer;
 
     // Directional light - loaded from config
     private Vector3 lightDirection;
@@ -102,7 +111,7 @@ public class StarfieldScene
             "Ship",
             new Vector3(config.ShipPositionX, config.ShipPositionY, config.ShipPositionZ),
             new Vector3(config.ShipScale, config.ShipScale, config.ShipScale),
-            new BoxCollider(0.5f, 0.3f, 1.0f) // Approximate ship dimensions
+            new BoxCollider(2.5f, 1.5f, 5.0f) // Approximate ship dimensions (larger for visibility)
         );
 
         // Add satellite collider (kinematic)
@@ -110,7 +119,7 @@ public class StarfieldScene
             "Satellite",
             new Vector3(config.SatellitePositionX, config.SatellitePositionY, config.SatellitePositionZ),
             new Vector3(config.SatelliteScale, config.SatelliteScale, config.SatelliteScale),
-            new SphereCollider(0.5f) // Approximate satellite as sphere
+            new BoxCollider(2.5f, 2.5f, 2.5f) // Box collider for satellite
         );
 
         // Create physics debug renderer
@@ -118,6 +127,14 @@ public class StarfieldScene
 
         // Create health bar renderer
         healthBarRenderer = new HealthBarRenderer();
+
+        // Initialize explosion system
+        explosionRenderer = new ExplosionRenderer("Resources/explosion.png");
+        explosions = new List<Explosion>();
+
+        // Initialize targeting system
+        targetingSystem = new TargetingSystem();
+        targetingUIRenderer = new TargetingUIRenderer();
 
         // Create camera controller orbiting the ship (not the planet)
         cameraController = new CameraController(ship);
@@ -160,19 +177,117 @@ public class StarfieldScene
         if (physicsWorld.IsColliding("Ship", "Planet"))
         {
             ship.TakeDamage(50f * deltaTime); // 50 damage per second on collision
+            // Spawn explosion at collision point
+            SpawnExplosionAtCollision(ship.Position, 1.0f, 2.5f);
         }
 
         if (physicsWorld.IsColliding("Satellite", "Planet"))
         {
             satellite.TakeDamage(50f * deltaTime); // 50 damage per second on collision
+            // Spawn explosion at collision point
+            SpawnExplosionAtCollision(satellite.Position, 0.5f, 1.5f);
+        }
+
+        // Update explosions
+        for (int i = explosions.Count - 1; i >= 0; i--)
+        {
+            explosions[i].Update(deltaTime);
+            if (!explosions[i].IsAlive)
+            {
+                explosions.RemoveAt(i);
+            }
         }
 
         // Update speed lines
         Vector3 shipForward = new Vector3(ship.Forward.X, ship.Forward.Y, ship.Forward.Z);
         speedLines.Update(ship.Position, shipForward, ship.Systems.Speed, deltaTime);
 
+        // Update targeting system
+        Camera3D camera = cameraController.GetCamera();
+        Vector2 mousePos = GetMousePosition();
+        targetingSystem.Update(
+            ship.Position,
+            satellite,
+            camera,
+            GetScreenWidth(),
+            GetScreenHeight(),
+            mousePos
+        );
+
+        // Handle targeting input
+        targetingSystem.HandleTargetingInput();
+
         // Update camera controller (ignore mouse input when interacting with UI)
         cameraController.Update(deltaTime, isMouseOverUI);
+    }
+
+    private void SpawnExplosionAtCollision(Vector3 position, float startScale, float peakScale)
+    {
+        // Spawn explosion at the given position with some randomness
+        var random = new Random();
+        Vector3 spawnPosition = position + new Vector3(
+            (float)(random.NextDouble() - 0.5) * 2.0f,
+            (float)(random.NextDouble() - 0.5) * 1.0f,
+            (float)(random.NextDouble() - 0.5) * 2.0f
+        );
+        explosions.Add(new Explosion(spawnPosition, 1.2f, startScale, peakScale));
+    }
+
+    private void DrawShipHealthBar(int x, int y)
+    {
+        // Health bar dimensions
+        const int barWidth = 200;
+        const int barHeight = 20;
+        const int borderWidth = 2;
+
+        // Get ship health info
+        float healthPercent = ship.HealthPercent;
+        float currentHealth = ship.Health.Health;
+        float maxHealth = ship.Health.startingHealth;
+
+        // Determine health color based on percentage
+        Color healthColor = healthPercent > 0.5f
+            ? Color.Green
+            : healthPercent > 0.25f
+                ? Color.Yellow
+                : Color.Red;
+
+        // Draw background
+        DrawRectangle(x, y, barWidth, barHeight, Color.DarkGray);
+
+        // Draw health fill
+        int fillWidth = (int)(barWidth * healthPercent);
+        DrawRectangle(x, y, fillWidth, barHeight, healthColor);
+
+        // Draw border
+        DrawRectangleLinesEx(new Rectangle(x, y, barWidth, barHeight), borderWidth, Color.White);
+
+        // Draw ship name label
+        FontManager.DrawText("SHIP", x, y - 18, 12, Color.White);
+
+        // Draw health text
+        string healthText = $"{currentHealth:F0} / {maxHealth:F0}";
+        FontManager.DrawText(healthText, x + 10, y + 3, 12, Color.Black);
+
+        // Draw percentage text on the right
+        string percentText = $"{healthPercent * 100:F0}%";
+        FontManager.DrawText(percentText, x + barWidth - 40, y + 3, 12, Color.Black);
+
+        // Show damage indicator if recently damaged
+        if (ship.Health.Health < ship.Health.startingHealth)
+        {
+            Color damageColor = new(255, 100, 100, 200);
+            string damageText = "DAMAGED";
+            FontManager.DrawText(damageText, x + barWidth + 10, y + 3, 11, damageColor);
+        }
+
+        // Show destroyed status if applicable
+        if (ship.IsDestroyed)
+        {
+            Color destroyedColor = Color.Red;
+            string destroyedText = "DESTROYED";
+            FontManager.DrawText(destroyedText, x + barWidth + 10, y + 3, 12, destroyedColor);
+        }
     }
 
     private void CheckMouseOverUI()
@@ -381,6 +496,12 @@ public class StarfieldScene
             // Draw speed lines around ship
             speedLines.Draw(shipForward);
 
+            // Draw explosions
+            for (int i = 0; i < explosions.Count; i++)
+            {
+                explosionRenderer.RenderExplosion(explosions[i], camera);
+            }
+
             // Draw physics debug colliders (if enabled in config)
             if (GameConfig.Instance.Debug.DebugPhysics)
             {
@@ -509,6 +630,12 @@ public class StarfieldScene
         // Title
         FontManager.DrawText("PHANTOM NEBULA", 10, 10, 20, Color.White);
 
+        // Ship health bar at top left
+        DrawShipHealthBar(20, 45);
+
+        // Draw targeting UI
+        targetingUIRenderer.Draw(targetingSystem, ship.Position);
+
         // Speed slider on right side (vertical)
         float sliderWidth = 20;
         float sliderHeight = 300;
@@ -594,6 +721,8 @@ public class StarfieldScene
         ship.Dispose();
         satellite.Dispose();
         physicsWorld.Dispose();
+        explosionRenderer.Unload();
+        explosions.Clear();
         gifRecorder.Dispose();
         Raylib.UnloadRenderTexture(sceneTexture);
     }
